@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Package, Plus, Search, Filter, Download, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { PesoIcon } from "./icons/PesoIcon";
 import { Button } from "./ui/button";
@@ -8,14 +8,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { InventoryTable } from "./InventoryTable";
 import { AddItemDialog } from "./AddItemDialog";
 import { Badge } from "./ui/badge";
-import { mockInventoryData } from "../data/mockInventoryData";
+import { getItems, getCategories, getSuppliers, createItem as apiCreateItem, updateItem as apiUpdateItem, deleteItem as apiDeleteItem } from "../lib/api";
 
 export function InventoryDashboard() {
-  const [items, setItems] = useState(mockInventoryData);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [suppliersList, setSuppliersList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [data, cats, sups] = await Promise.all([
+          getItems(),
+          getCategories(),
+          getSuppliers(),
+        ]);
+        if (!mounted) return;
+        setItems(data);
+        setCategoriesList(cats.map(c => c.name));
+        setSuppliersList(sups.map(s => s.name));
+      } catch (e) {
+        if (mounted) setError("Failed to load items");
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   const filteredItems = items.filter(item => {
     const matchesSearch = 
@@ -29,30 +56,58 @@ export function InventoryDashboard() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const categories = Array.from(new Set(items.map(item => item.category)));
+  const categories = categoriesList.length ? categoriesList : Array.from(new Set(items.map(item => item.category)));
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const lowStockCount = items.filter(item => item.status === "low-stock").length;
   const outOfStockCount = items.filter(item => item.status === "out-of-stock").length;
   const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
 
-  const handleAddItem = (newItem) => {
-    const item = {
-      ...newItem,
-      id: String(items.length + 1),
-      lastUpdated: new Date().toISOString().split('T')[0]
-    };
-    setItems([...items, item]);
+  const handleAddItem = async (newItem) => {
+    try {
+      const created = await apiCreateItem({
+        sku: newItem.sku,
+        name: newItem.name,
+        category: newItem.category,
+        supplier: newItem.supplier,
+        quantity: newItem.quantity,
+        minQuantity: newItem.minQuantity,
+        price: newItem.price,
+      });
+      setItems(prev => [...prev, created]);
+    } catch (e) {
+      setError('Failed to add item');
+      console.error(e);
+    }
   };
 
-  const handleUpdateItem = (updatedItem) => {
-    setItems(items.map(item => 
-      item.id === updatedItem.id ? { ...updatedItem, lastUpdated: new Date().toISOString().split('T')[0] } : item
-    ));
+  const handleUpdateItem = async (updatedItem) => {
+    try {
+      const saved = await apiUpdateItem(updatedItem.id, {
+        sku: updatedItem.sku,
+        name: updatedItem.name,
+        category: updatedItem.category,
+        supplier: updatedItem.supplier,
+        quantity: updatedItem.quantity,
+        minQuantity: updatedItem.minQuantity,
+        price: updatedItem.price,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      });
+      setItems(prev => prev.map(item => item.id === saved.id ? saved : item));
+    } catch (e) {
+      setError('Failed to update item');
+      console.error(e);
+    }
   };
 
-  const handleDeleteItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
+  const handleDeleteItem = async (id) => {
+    try {
+      await apiDeleteItem(id);
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch (e) {
+      setError('Failed to delete item');
+      console.error(e);
+    }
   };
 
   return (
@@ -168,10 +223,18 @@ export function InventoryDashboard() {
       </Card>
 
       {/* Inventory Table */}
+      {loading && (
+        <Card className="mb-6"><CardContent className="pt-6">Loading items...</CardContent></Card>
+      )}
+      {!!error && (
+        <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
+      )}
       <InventoryTable 
         items={filteredItems} 
         onUpdate={handleUpdateItem}
         onDelete={handleDeleteItem}
+        categories={categories}
+        suppliers={suppliersList}
       />
 
       {/* Add Item Dialog */}
@@ -180,6 +243,7 @@ export function InventoryDashboard() {
         onClose={() => setIsAddDialogOpen(false)}
         onAdd={handleAddItem}
         categories={categories}
+        suppliers={suppliersList}
       />
     </div>
   );

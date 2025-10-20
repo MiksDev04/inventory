@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { EditItemDialog } from "./EditItemDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-export function InventoryTable({ items, onUpdate, onDelete }) {
+export function InventoryTable({ items, onUpdate, onDelete, categories = [], suppliers = [] }) {
   const [editingItem, setEditingItem] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -128,6 +128,8 @@ export function InventoryTable({ items, onUpdate, onDelete }) {
             onUpdate(updatedItem);
             setEditingItem(null);
           }}
+          categories={categories}
+          suppliers={suppliers}
         />
       )}
 

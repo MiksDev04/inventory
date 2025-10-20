@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-export function EditItemDialog({ item, isOpen, onClose, onUpdate }) {
+export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [], suppliers = [] }) {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -91,24 +92,36 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate }) {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Category *
                 </label>
-                <Input
-                  required
-                  value={formData.category}
-                  onChange={(e) => handleChange("category", e.target.value)}
-                  placeholder="Enter category"
-                />
+                <Select value={formData.category} onValueChange={(value) => handleChange("category", value)}>
+                  <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
+                    {categories.map((c) => (
+                      <SelectItem key={c} value={c} className="text-gray-900 dark:text-gray-100">
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Supplier *
                 </label>
-                <Input
-                  required
-                  value={formData.supplier}
-                  onChange={(e) => handleChange("supplier", e.target.value)}
-                  placeholder="Enter supplier name"
-                />
+                <Select value={formData.supplier} onValueChange={(value) => handleChange("supplier", value)}>
+                  <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700">
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
+                    {suppliers.map((s) => (
+                      <SelectItem key={s} value={s} className="text-gray-900 dark:text-gray-100">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

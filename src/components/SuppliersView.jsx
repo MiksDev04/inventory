@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Users, Plus, Mail, Phone, MapPin, Pencil, Trash2, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -8,71 +8,30 @@ import { AddSupplierDialog } from "./AddSupplierDialog";
 import { EditSupplierDialog } from "./EditSupplierDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-const mockSuppliers = [
-  {
-    id: "1",
-    name: "TechSupply Co.",
-    email: "contact@techsupply.com",
-    phone: "+1 (555) 123-4567",
-    location: "New York, NY",
-    description: "Leading supplier of electronic components and devices",
-    status: "active",
-    createdDate: "2025-01-10",
-  },
-  {
-    id: "2",
-    name: "Cable World",
-    email: "sales@cableworld.com",
-    phone: "+1 (555) 234-5678",
-    location: "San Francisco, CA",
-    description: "Specialized in cables and connectivity solutions",
-    status: "active",
-    createdDate: "2025-01-12",
-  },
-  {
-    id: "3",
-    name: "Office Plus",
-    email: "info@officeplus.com",
-    phone: "+1 (555) 345-6789",
-    location: "Chicago, IL",
-    description: "Complete office furniture and equipment provider",
-    status: "active",
-    createdDate: "2025-01-14",
-  },
-  {
-    id: "4",
-    name: "Display Masters",
-    email: "orders@displaymasters.com",
-    phone: "+1 (555) 456-7890",
-    location: "Austin, TX",
-    description: "Premium display and monitor solutions",
-    status: "active",
-    createdDate: "2025-01-15",
-  },
-  {
-    id: "5",
-    name: "Light & Home",
-    email: "hello@lighthome.com",
-    phone: "+1 (555) 567-8901",
-    location: "Seattle, WA",
-    description: "Lighting and home office accessories",
-    status: "active",
-    createdDate: "2025-01-16",
-  },
-  {
-    id: "6",
-    name: "Paper Co.",
-    email: "contact@paperco.com",
-    phone: "+1 (555) 678-9012",
-    location: "Boston, MA",
-    description: "Stationery and office supply specialist",
-    status: "active",
-    createdDate: "2025-01-18",
-  },
-];
+import { getSuppliers, getItems, createSupplier as apiCreateSupplier, updateSupplier as apiUpdateSupplier, deleteSupplier as apiDeleteSupplier } from "../lib/api";
 
 export function SuppliersView({ items }) {
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
+  const [suppliers, setSuppliers] = useState([]);
+  const [remoteItems, setRemoteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [sups, its] = await Promise.all([getSuppliers(), getItems()]);
+        if (!mounted) return;
+        setSuppliers(sups);
+        setRemoteItems(its);
+      } catch (e) {
+        if (mounted) setError("Failed to load suppliers");
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -86,34 +45,45 @@ export function SuppliersView({ items }) {
   );
 
   const getSupplierStats = (supplierName) => {
-    const supplierItems = items.filter(item => item.supplier === supplierName);
+  const list = (items && items.length ? items : remoteItems);
+  const supplierItems = list.filter(item => item.supplier === supplierName);
     const itemCount = supplierItems.length;
     const totalValue = supplierItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
     const categories = Array.from(new Set(supplierItems.map(item => item.category)));
     return { itemCount, totalValue, categories };
   };
 
-  const handleAddSupplier = (newSupplier) => {
-    const supplier = {
-      ...newSupplier,
-      id: String(suppliers.length + 1),
-      createdDate: new Date().toISOString().split('T')[0],
-    };
-    setSuppliers([...suppliers, supplier]);
+  const handleAddSupplier = async (newSupplier) => {
+    try {
+      const created = await apiCreateSupplier(newSupplier);
+      setSuppliers(prev => [...prev, created]);
+    } catch (e) {
+      setError('Failed to add supplier');
+      console.error(e);
+    }
   };
 
-  const handleUpdateSupplier = (updatedSupplier) => {
-    setSuppliers(suppliers.map(sup =>
-      sup.id === updatedSupplier.id ? updatedSupplier : sup
-    ));
-    setSelectedSupplier(null);
+  const handleUpdateSupplier = async (updatedSupplier) => {
+    try {
+      const saved = await apiUpdateSupplier(updatedSupplier.id, updatedSupplier);
+      setSuppliers(prev => prev.map(sup => sup.id === saved.id ? saved : sup));
+      setSelectedSupplier(null);
+    } catch (e) {
+      setError('Failed to update supplier');
+      console.error(e);
+    }
   };
 
-  const handleDeleteSupplier = () => {
-    if (selectedSupplier) {
-      setSuppliers(suppliers.filter(sup => sup.id !== selectedSupplier.id));
+  const handleDeleteSupplier = async () => {
+    if (!selectedSupplier) return;
+    try {
+      await apiDeleteSupplier(selectedSupplier.id);
+      setSuppliers(prev => prev.filter(sup => sup.id !== selectedSupplier.id));
       setSelectedSupplier(null);
       setIsDeleteDialogOpen(false);
+    } catch (e) {
+      setError('Failed to delete supplier');
+      console.error(e);
     }
   };
 
@@ -128,9 +98,7 @@ export function SuppliersView({ items }) {
   };
 
   const activeSuppliers = suppliers.filter(s => s.status === "active");
-  const totalProducts = suppliers.reduce((sum, supplier) => {
-    return sum + getSupplierStats(supplier.name).itemCount;
-  }, 0);
+  const totalProducts = suppliers.reduce((sum, supplier) => sum + getSupplierStats(supplier.name).itemCount, 0);
 
   return (
     <div className="max-w-7xl mx-auto p-8">
@@ -202,6 +170,12 @@ export function SuppliersView({ items }) {
       </Card>
 
       {/* Suppliers List */}
+      {loading && (
+        <Card className="mb-6"><CardContent className="pt-6">Loading suppliers...</CardContent></Card>
+      )}
+      {!!error && (
+        <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredSuppliers.map((supplier) => {
           const stats = getSupplierStats(supplier.name);

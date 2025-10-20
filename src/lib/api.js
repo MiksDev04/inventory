@@ -1,0 +1,68 @@
+import axios from 'axios';
+
+const api = axios.create({ baseURL: '/api' });
+
+export async function getItems() {
+  const { data } = await api.get('/items');
+  return data.map(r => ({
+    ...r,
+    price: typeof r.price === 'string' ? parseFloat(r.price) : r.price,
+    quantity: typeof r.quantity === 'string' ? parseInt(r.quantity, 10) : r.quantity,
+    minQuantity: typeof r.minQuantity === 'string' ? parseInt(r.minQuantity, 10) : r.minQuantity,
+  }));
+}
+
+export async function createItem(payload) {
+  const { data } = await api.post('/items', payload);
+  return data;
+}
+
+export async function updateItem(id, payload) {
+  const { data } = await api.put(`/items/${id}`, payload);
+  return data;
+}
+
+export async function deleteItem(id) {
+  const { data } = await api.delete(`/items/${id}`);
+  return data;
+}
+
+export async function getCategories() {
+  const { data } = await api.get('/categories');
+  return data;
+}
+
+export async function createCategory(payload) {
+  const { data } = await api.post('/categories', payload);
+  return data;
+}
+
+export async function updateCategory(id, payload) {
+  const { data } = await api.put(`/categories/${id}`, payload);
+  return data;
+}
+
+export async function deleteCategory(id) {
+  const { data } = await api.delete(`/categories/${id}`);
+  return data;
+}
+
+export async function getSuppliers() {
+  const { data } = await api.get('/suppliers');
+  return data;
+}
+
+export async function createSupplier(payload) {
+  const { data } = await api.post('/suppliers', payload);
+  return data;
+}
+
+export async function updateSupplier(id, payload) {
+  const { data } = await api.put(`/suppliers/${id}`, payload);
+  return data;
+}
+
+export async function deleteSupplier(id) {
+  const { data } = await api.delete(`/suppliers/${id}`);
+  return data;
+}

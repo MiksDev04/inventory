@@ -1,82 +1,30 @@
+import { useEffect, useState } from "react";
 import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
+import { getItems } from "../lib/api";
 
 export default function Dashboard() {
-  // Sample data - replace with your actual data source
-  const items = [
-    {
-      id: 1,
-      name: "Monitor 27 Inch",
-      sku: "MON-27-001",
-      quantity: 55,
-      price: 17454.33,
-      category: "Electronics",
-      status: "in-stock",
-      lastUpdated: "2025-10-13"
-    },
-    {
-      id: 2,
-      name: "Mechanical Keyboard",
-      sku: "KEY-MECH-002",
-      quantity: 89,
-      price: 788.68,
-      category: "Electronics",
-      status: "in-stock",
-      lastUpdated: "2025-10-14"
-    },
-    {
-      id: 3,
-      name: "Office Chair",
-      sku: "CHR-OFF-003",
-      quantity: 33,
-      price: 1515.08,
-      category: "Furniture",
-      status: "in-stock",
-      lastUpdated: "2025-10-14"
-    },
-    {
-      id: 4,
-      name: "Wireless Mouse",
-      sku: "MOU-WRL-004",
-      quantity: 126,
-      price: 346.71,
-      category: "Electronics",
-      status: "low-stock",
-      lastUpdated: "2025-10-14"
-    },
-    {
-      id: 5,
-      name: "Notebook Set",
-      sku: "NOT-SET-005",
-      quantity: 200,
-      price: 99.90,
-      category: "Stationery",
-      status: "in-stock",
-      lastUpdated: "2025-10-12"
-    },
-    {
-      id: 6,
-      name: "USB-C Cable",
-      sku: "CAB-USC-006",
-      quantity: 15,
-      price: 250.00,
-      category: "Accessories",
-      status: "low-stock",
-      lastUpdated: "2025-10-13"
-    },
-    {
-      id: 7,
-      name: "Desk Lamp",
-      sku: "LMP-DSK-007",
-      quantity: 0,
-      price: 899.99,
-      category: "Furniture",
-      status: "out-of-stock",
-      lastUpdated: "2025-10-11"
-    }
-  ];
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await getItems();
+        if (mounted) setItems(data);
+      } catch (e) {
+        if (mounted) setError("Failed to load dashboard data");
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const lowStockCount = items.filter(item => item.status === "low-stock").length;
@@ -102,6 +50,13 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
           <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
         </div>
+
+        {loading && (
+          <Card className="mb-6"><CardContent className="pt-6">Loading...</CardContent></Card>
+        )}
+        {!!error && (
+          <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

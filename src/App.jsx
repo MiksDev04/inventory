@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LoginPage from "./components/LoginPage";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Sidebar } from "./components/SIdebar";
 import Dashboard from "./components/DashboardView";
@@ -7,14 +8,11 @@ import { CategoriesView } from "./components/CategoriesView";
 import { AnalyticsView } from "./components/AnalyticsView";
 import { SuppliersView } from "./components/SuppliersView";
 import { SettingsView } from "./components/SettingsView";
-import { mockInventoryData } from "./data/mockInventoryData";
 
 function App() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [sidebarWidth, setSidebarWidth] = useState(240);
-
-  // Use static mockInventoryData for CategoriesView
-  const [inventoryItems] = useState(mockInventoryData);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const renderView = () => {
     switch (currentView) {
@@ -23,17 +21,21 @@ function App() {
       case "inventory":
         return <InventoryDashboard />;
       case "categories":
-        return <CategoriesView items={inventoryItems} />;
+        return <CategoriesView />;
       case "analytics":
-        return <AnalyticsView items={inventoryItems} />;
+        return <AnalyticsView />;
       case "suppliers":
-        return <SuppliersView items={inventoryItems} />;
+        return <SuppliersView items={[]} />;
       case "settings":
         return <SettingsView />;
       default:
         return <Dashboard />;
     }
   };
+
+  if (!loggedIn) {
+    return <LoginPage onLogin={() => setLoggedIn(true)} />;
+  }
 
   return (
     <ThemeProvider>

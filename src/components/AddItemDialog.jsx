@@ -4,15 +4,15 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-export function AddItemDialog({ isOpen, onClose, onAdd, categories }) {
+export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = [] }) {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
-    category: "",
+  category: "",
     quantity: 0,
     minQuantity: 0,
     price: 0,
-    supplier: "",
+  supplier: "",
     status: "in-stock"
   });
 
@@ -116,12 +116,18 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories }) {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Supplier *
                 </label>
-                <Input
-                  required
-                  value={formData.supplier}
-                  onChange={(e) => handleChange("supplier", e.target.value)}
-                  placeholder="Enter supplier name"
-                />
+                <Select value={formData.supplier} onValueChange={(value) => handleChange("supplier", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

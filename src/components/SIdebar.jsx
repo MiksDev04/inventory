@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Package, LayoutDashboard, Settings, Users, TrendingUp, Bell, Moon, Sun, GripVertical, FolderOpen } from "lucide-react";
+import { Package, LayoutDashboard, Settings, Users, TrendingUp, Bell, Moon, Sun, GripVertical, FolderOpen, LogOut } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
@@ -16,7 +16,7 @@ const menuItems = [
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 
-export function Sidebar({ currentView, onNavigate, width, onWidthChange }) {
+export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout }) {
   const { theme, toggleTheme } = useTheme();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
@@ -135,6 +135,14 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange }) {
           </div>
           <button className="text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white">
             <Bell className="w-5 h-5" />
+          </button>
+          <button
+            onClick={logout}
+            className="ml-1 p-1 rounded text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white bg-transparent border-none"
+            style={{ minWidth: 0 }}
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>

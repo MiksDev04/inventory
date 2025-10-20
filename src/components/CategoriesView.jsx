@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FolderOpen, Plus, Search, Pencil, Trash2, Package } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -8,48 +8,36 @@ import { AddCategoryDialog } from "./AddCategoryDialog";
 import { EditCategoryDialog } from "./EditCategoryDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-const mockCategories = [
-  {
-    id: "1",
-    name: "Electronics",
-    description: "Electronic devices, components, and accessories",
-    color: "blue",
-    icon: "⚡",
-    createdDate: "2025-01-15",
-  },
-  {
-    id: "2",
-    name: "Accessories",
-    description: "Cables, adapters, and peripheral accessories",
-    color: "purple",
-    icon: "🔧",
-    createdDate: "2025-01-16",
-  },
-  {
-    id: "3",
-    name: "Furniture",
-    description: "Office and home furniture items",
-    color: "orange",
-    icon: "🪑",
-    createdDate: "2025-01-17",
-  },
-  {
-    id: "4",
-    name: "Stationery",
-    description: "Office supplies and stationery items",
-    color: "green",
-    icon: "📝",
-    createdDate: "2025-01-18",
-  },
-];
+import { getCategories, getItems, createCategory as apiCreateCategory, updateCategory as apiUpdateCategory, deleteCategory as apiDeleteCategory } from "../lib/api";
 
 export function CategoriesView({ items }) {
-  const [categories, setCategories] = useState(mockCategories);
+  const [categories, setCategories] = useState([]);
+  const [remoteItems, setRemoteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [cats, its] = await Promise.all([getCategories(), getItems()]);
+        if (!mounted) return;
+        setCategories(cats);
+        setRemoteItems(its);
+      } catch (e) {
+        if (mounted) setError("Failed to load categories");
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   const filteredCategories = categories.filter(category => 
     category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,30 +45,41 @@ export function CategoriesView({ items }) {
   );
 
   const getCategoryItemCount = (categoryName) => {
-    return items.filter(item => item.category === categoryName).length;
+    const list = (items && items.length ? items : remoteItems);
+    return list.filter(item => item.category === categoryName).length;
   };
 
-  const handleAddCategory = (newCategory) => {
-    const category = {
-      ...newCategory,
-      id: String(categories.length + 1),
-      createdDate: new Date().toISOString().split('T')[0],
-    };
-    setCategories([...categories, category]);
+  const handleAddCategory = async (newCategory) => {
+    try {
+      const created = await apiCreateCategory(newCategory);
+      setCategories(prev => [...prev, created]);
+    } catch (e) {
+      setError('Failed to add category');
+      console.error(e);
+    }
   };
 
-  const handleUpdateCategory = (updatedCategory) => {
-    setCategories(categories.map(cat => 
-      cat.id === updatedCategory.id ? updatedCategory : cat
-    ));
-    setSelectedCategory(null);
+  const handleUpdateCategory = async (updatedCategory) => {
+    try {
+      const saved = await apiUpdateCategory(updatedCategory.id, updatedCategory);
+      setCategories(prev => prev.map(cat => cat.id === saved.id ? saved : cat));
+      setSelectedCategory(null);
+    } catch (e) {
+      setError('Failed to update category');
+      console.error(e);
+    }
   };
 
-  const handleDeleteCategory = () => {
-    if (selectedCategory) {
-      setCategories(categories.filter(cat => cat.id !== selectedCategory.id));
+  const handleDeleteCategory = async () => {
+    if (!selectedCategory) return;
+    try {
+      await apiDeleteCategory(selectedCategory.id);
+      setCategories(prev => prev.filter(cat => cat.id !== selectedCategory.id));
       setSelectedCategory(null);
       setIsDeleteDialogOpen(false);
+    } catch (e) {
+      setError('Failed to delete category');
+      console.error(e);
     }
   };
 
@@ -158,7 +157,7 @@ export function CategoriesView({ items }) {
             <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">{items.length}</div>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">{(items && items.length ? items : remoteItems).length}</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all categories</p>
           </CardContent>
         </Card>
@@ -170,7 +169,7 @@ export function CategoriesView({ items }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-gray-900 dark:text-gray-100">
-              {categories.length > 0 ? Math.round(items.length / categories.length) : 0}
+              {categories.length > 0 ? Math.round(((items && items.length ? items : remoteItems).length) / categories.length) : 0}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Per category</p>
           </CardContent>
@@ -193,6 +192,12 @@ export function CategoriesView({ items }) {
       </Card>
 
       {/* Categories Grid */}
+      {loading && (
+        <Card className="mb-6"><CardContent className="pt-6">Loading categories...</CardContent></Card>
+      )}
+      {!!error && (
+        <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {filteredCategories.map((category) => {
           const itemCount = getCategoryItemCount(category.name);

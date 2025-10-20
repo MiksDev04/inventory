@@ -1,0 +1,32 @@
+import dotenv from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+import process from 'node:process';
+import itemsRouter from './routes/items.js';
+import categoriesRouter from './routes/categories.js';
+import suppliersRouter from './routes/suppliers.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = Number(process.env.PORT || 3001);
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, service: 'inventory-backend' });
+});
+
+app.use('/api/items', itemsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/suppliers', suppliersRouter);
+
+// Fallback 404
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend listening on http://localhost:${PORT}`);
+});

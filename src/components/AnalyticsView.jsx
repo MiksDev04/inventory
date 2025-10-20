@@ -1,7 +1,27 @@
+import { useEffect, useState } from "react";
 import { TrendingUp, BarChart3, PieChart, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { getItems } from "../lib/api";
+export function AnalyticsView() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-export function AnalyticsView({ items }) {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await getItems();
+        if (mounted) setItems(data);
+      } catch (e) {
+        if (mounted) setError("Failed to load analytics data");
+        console.error(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
   const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   const avgItemValue = totalValue / items.length;
   
@@ -31,6 +51,12 @@ export function AnalyticsView({ items }) {
         <h1 className="text-gray-900 dark:text-white">Analytics</h1>
         <p className="text-gray-600 dark:text-gray-400">Insights and trends for your inventory</p>
       </div>
+      {loading && (
+        <Card className="mb-6"><CardContent className="pt-6">Loading analytics...</CardContent></Card>
+      )}
+      {!!error && (
+        <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
