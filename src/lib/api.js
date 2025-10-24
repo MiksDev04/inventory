@@ -66,3 +66,34 @@ export async function deleteSupplier(id) {
   const { data } = await api.delete(`/suppliers/${id}`);
   return data;
 }
+
+// Notifications API
+export async function getNotifications(userId = 1) {
+  const { data } = await api.get('/notifications', { params: { userId } });
+  return data;
+}
+
+export async function getUnreadCount(userId = 1) {
+  const { data } = await api.get('/notifications/unread-count', { params: { userId } });
+  return data;
+}
+
+export async function markAsRead(id) {
+  const { data } = await api.put(`/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllAsRead(userId = 1) {
+  const { data } = await api.put('/notifications/mark-all-read', null, { params: { userId } });
+  return data;
+}
+
+export async function deleteNotification(id) {
+  const { data } = await api.delete(`/notifications/${id}`);
+  return data;
+}
+
+export async function generateStockNotifications(userId = 1) {
+  const { data } = await api.post('/notifications/generate', null, { params: { userId } });
+  return data;
+}

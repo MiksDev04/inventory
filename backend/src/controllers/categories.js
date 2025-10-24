@@ -1,4 +1,5 @@
 import { query } from '../db.js';
+import pool from '../db.js';
 
 export async function listCategories(req, res) {
   try {
@@ -63,9 +64,36 @@ export async function updateCategory(req, res) {
 export async function deleteCategory(req, res) {
   const { id } = req.params;
   try {
-    const result = await query('DELETE FROM categories WHERE id = ?', [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Category not found' });
-    res.json({ ok: true });
+    // Use transaction to delete dependent items first to avoid FK constraint errors
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Check if category exists
+      const [catRows] = await conn.query('SELECT id FROM categories WHERE id = ?', [id]);
+      if (catRows.length === 0) {
+        await conn.rollback();
+        conn.release();
+        return res.status(404).json({ error: 'Category not found' });
+      }
+
+      // Delete items that reference this category (notifications referencing items will cascade)
+      await conn.query('DELETE FROM items WHERE category_id = ?', [id]);
+
+      // Now delete the category
+      const [result] = await conn.query('DELETE FROM categories WHERE id = ?', [id]);
+
+      await conn.commit();
+      conn.release();
+
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Category not found' });
+      res.json({ ok: true });
+    } catch (innerErr) {
+      await conn.rollback();
+      conn.release();
+      console.error('deleteCategory transaction error', innerErr);
+      res.status(500).json({ error: 'Failed to delete category' });
+    }
   } catch (err) {
     console.error('deleteCategory error', err);
     res.status(500).json({ error: 'Failed to delete category' });

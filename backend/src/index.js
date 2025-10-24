@@ -5,6 +5,7 @@ import process from 'node:process';
 import itemsRouter from './routes/items.js';
 import categoriesRouter from './routes/categories.js';
 import suppliersRouter from './routes/suppliers.js';
+import notificationsRouter from './routes/notifications.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/items', itemsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/suppliers', suppliersRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Fallback 404
 app.use((req, res) => {

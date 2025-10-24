@@ -68,6 +68,36 @@ VALUES
   ('OC-007', 'Office Chair', (SELECT id FROM categories WHERE name='Furniture'), (SELECT id FROM suppliers WHERE name='Office Plus'), 25, 5, 199.99, '2025-10-14'),
   ('NB-008', 'Notebook Set', (SELECT id FROM categories WHERE name='Stationery'), (SELECT id FROM suppliers WHERE name='Paper Co.'), 200, 50, 9.99, '2025-10-12');
 
--- End seed
+-- User Accounts (admin account with plain password for demo - in production, use bcrypt)
+-- Password: inventory123
+INSERT INTO user_accounts (username, password_hash, email, full_name, role, is_active)
+VALUES
+  ('admin', '$2b$10$rKZYQZ0cZ0cZ0cZ0cZ0cZ0eZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0c', 'admin@inventory.com', 'Justin Bautista', 'admin', TRUE)
+ON DUPLICATE KEY UPDATE username = VALUES(username);
+
+-- Sample Notifications (auto-generated for low stock and out of stock items)
+-- Get the admin user_id
+SET @admin_id = (SELECT id FROM user_accounts WHERE username = 'admin');
+
+-- Create notifications for items based on stock levels
+INSERT INTO notifications (user_id, type, title, message, item_id, is_read)
+SELECT 
+  @admin_id,
+  CASE 
+    WHEN quantity = 0 THEN 'out_of_stock'
+    WHEN quantity < min_quantity THEN 'low_stock'
+  END as type,
+  CASE 
+    WHEN quantity = 0 THEN CONCAT(name, ' is out of stock')
+    WHEN quantity < min_quantity THEN CONCAT(name, ' is running low')
+  END as title,
+  CASE 
+    WHEN quantity = 0 THEN CONCAT('Item "', name, '" (SKU: ', sku, ') is currently out of stock. Please reorder immediately.')
+    WHEN quantity < min_quantity THEN CONCAT('Item "', name, '" (SKU: ', sku, ') has only ', quantity, ' units left (minimum: ', min_quantity, '). Consider restocking soon.')
+  END as message,
+  id as item_id,
+  FALSE
+FROM items
+WHERE quantity = 0 OR quantity < min_quantity;
 
 -- End seed

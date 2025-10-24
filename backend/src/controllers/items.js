@@ -1,5 +1,51 @@
 import { query } from '../db.js';
 
+// Helper function to generate notification for stock changes
+async function checkAndCreateNotification(itemId) {
+  try {
+    // Get item details
+    const [item] = await query(
+      'SELECT id, sku, name, quantity, min_quantity FROM items WHERE id = ?',
+      [itemId]
+    );
+    
+    if (!item) return;
+
+    // Check if item needs notification
+    const needsNotification = item.quantity === 0 || item.quantity < item.min_quantity;
+    
+    if (needsNotification) {
+      // Check if notification already exists for this item (avoid duplicates)
+      const existing = await query(
+        `SELECT id FROM notifications 
+         WHERE item_id = ? AND is_read = FALSE 
+         AND type IN ('low_stock', 'out_of_stock')
+         ORDER BY created_at DESC LIMIT 1`,
+        [itemId]
+      );
+
+      if (existing.length === 0) {
+        const type = item.quantity === 0 ? 'out_of_stock' : 'low_stock';
+        const title = item.quantity === 0 
+          ? `${item.name} is out of stock` 
+          : `${item.name} is running low`;
+        const message = item.quantity === 0
+          ? `Item "${item.name}" (SKU: ${item.sku}) is currently out of stock. Please reorder immediately.`
+          : `Item "${item.name}" (SKU: ${item.sku}) has only ${item.quantity} units left (minimum: ${item.min_quantity}). Consider restocking soon.`;
+
+        // Default to user_id = 1 (admin)
+        await query(
+          `INSERT INTO notifications (user_id, type, title, message, item_id) VALUES (?, ?, ?, ?, ?)`,
+          [1, type, title, message, itemId]
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    // Don't throw error - notification is not critical to item operation
+  }
+}
+
 function toUiItem(row) {
   // Ensure numeric types
   return {
@@ -105,6 +151,10 @@ export async function createItem(req, res) {
       [sku, name, catId, supId, qty, minQ, prc, lastUpdated]
     );
     req.params.id = result.insertId; // reuse getItem
+    
+    // Check if notification needs to be created
+    await checkAndCreateNotification(result.insertId);
+    
     return getItem(req, res);
   } catch (err) {
     console.error('createItem error', err);
@@ -135,6 +185,10 @@ export async function updateItem(req, res) {
     if (fields.length === 0) return res.status(400).json({ error: 'No fields to update' });
     values.push(id);
     await query(`UPDATE items SET ${fields.join(', ')} WHERE id = ?`, values);
+    
+    // Check if notification needs to be created after update
+    await checkAndCreateNotification(id);
+    
     return getItem(req, res);
   } catch (err) {
     console.error('updateItem error', err);

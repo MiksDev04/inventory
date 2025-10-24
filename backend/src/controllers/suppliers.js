@@ -1,4 +1,5 @@
 import { query } from '../db.js';
+import pool from '../db.js';
 
 export async function listSuppliers(req, res) {
   try {
@@ -65,9 +66,36 @@ export async function updateSupplier(req, res) {
 export async function deleteSupplier(req, res) {
   const { id } = req.params;
   try {
-    const result = await query('DELETE FROM suppliers WHERE id = ?', [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Supplier not found' });
-    res.json({ ok: true });
+    // Use transaction to delete dependent items first to avoid FK constraint errors
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Check if supplier exists
+      const [supRows] = await conn.query('SELECT id FROM suppliers WHERE id = ?', [id]);
+      if (supRows.length === 0) {
+        await conn.rollback();
+        conn.release();
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      // Delete items that reference this supplier (notifications referencing items will cascade)
+      await conn.query('DELETE FROM items WHERE supplier_id = ?', [id]);
+
+      // Now delete the supplier
+      const [result] = await conn.query('DELETE FROM suppliers WHERE id = ?', [id]);
+
+      await conn.commit();
+      conn.release();
+
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Supplier not found' });
+      res.json({ ok: true });
+    } catch (innerErr) {
+      await conn.rollback();
+      conn.release();
+      console.error('deleteSupplier transaction error', innerErr);
+      res.status(500).json({ error: 'Failed to delete supplier' });
+    }
   } catch (err) {
     console.error('deleteSupplier error', err);
     res.status(500).json({ error: 'Failed to delete supplier' });

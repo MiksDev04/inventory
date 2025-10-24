@@ -3,6 +3,8 @@ import { Package, LayoutDashboard, Settings, Users, TrendingUp, Bell, Moon, Sun,
 import { cn } from "./ui/utils";
 import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
+import NotificationModal from "./NotificationModal";
+import { getUnreadCount } from "../lib/api";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,7 +21,26 @@ const MAX_WIDTH = 400;
 export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout }) {
   const { theme, toggleTheme } = useTheme();
   const [isResizing, setIsResizing] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const sidebarRef = useRef(null);
+
+  // Fetch unread count on mount and periodically
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const { count } = await getUnreadCount();
+        setUnreadCount(count);
+      } catch (error) {
+        console.error("Failed to fetch unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -133,8 +154,17 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
             <p className="text-sm text-gray-100 dark:text-gray-200">Justin Bautista</p>
             <p className="text-xs text-gray-400 dark:text-gray-500">Administrator</p>
           </div>
-          <button className="text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white">
+          <button 
+            className="relative text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white"
+            onClick={() => setShowNotifications(true)}
+            title="Notifications"
+          >
             <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
           <button
             onClick={logout}
@@ -146,6 +176,16 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
           </button>
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal 
+        isOpen={showNotifications} 
+        onClose={() => {
+          setShowNotifications(false);
+          // Refresh unread count after closing modal
+          getUnreadCount().then(({ count }) => setUnreadCount(count)).catch(console.error);
+        }} 
+      />
 
       {/* Resize Handle */}
       <div
