@@ -33,6 +33,13 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setCurrentView("dashboard");
+    // Clear any user data from localStorage if needed
+    localStorage.removeItem("userToken");
+  };
+
   if (!loggedIn) {
     return <LoginPage onLogin={() => setLoggedIn(true)} />;
   }
@@ -45,6 +52,7 @@ function App() {
           onNavigate={setCurrentView}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
+          logout={handleLogout}
         />
         <main 
           className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#0d1117]"

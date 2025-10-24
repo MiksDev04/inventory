@@ -5,6 +5,7 @@ import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
 import NotificationModal from "./NotificationModal";
 import { getUnreadCount } from "../lib/api";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -22,6 +23,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const { theme, toggleTheme } = useTheme();
   const [isResizing, setIsResizing] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const sidebarRef = useRef(null);
 
@@ -167,7 +169,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
             )}
           </button>
           <button
-            onClick={logout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="ml-1 p-1 rounded text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white bg-transparent border-none"
             style={{ minWidth: 0 }}
             title="Logout"
@@ -186,6 +188,22 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
           getUnreadCount().then(({ count }) => setUnreadCount(count)).catch(console.error);
         }} 
       />
+
+      {/* Logout Confirmation Modal */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out? Any unsaved changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={logout}>Logout</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Resize Handle */}
       <div
