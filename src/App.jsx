@@ -8,6 +8,7 @@ import { CategoriesView } from "./components/CategoriesView";
 import { AnalyticsView } from "./components/AnalyticsView";
 import { SuppliersView } from "./components/SuppliersView";
 import { SettingsView } from "./components/SettingsView";
+import ReportsView from "./components/ReportsView";
 
 function App() {
   const [currentView, setCurrentView] = useState("dashboard");
@@ -28,6 +29,8 @@ function App() {
         return <SuppliersView items={[]} />;
       case "settings":
         return <SettingsView />;
+      case "reports":
+        return <ReportsView />;
       default:
         return <Dashboard />;
     }

@@ -97,6 +97,12 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
+                    {/* If the item's current category isn't in the categories list, show it first for transparency */}
+                    {formData.category && !categories.includes(formData.category) && (
+                      <SelectItem key={`current-${formData.category}`} value={formData.category} className="text-gray-900 dark:text-gray-100">
+                        {formData.category}
+                      </SelectItem>
+                    )}
                     {categories.map((c) => (
                       <SelectItem key={c} value={c} className="text-gray-900 dark:text-gray-100">
                         {c}
@@ -115,6 +121,12 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
+                    {/* If the item's current supplier isn't in the suppliers list, show it first for transparency */}
+                    {formData.supplier && !suppliers.includes(formData.supplier) && (
+                      <SelectItem key={`current-sup-${formData.supplier}`} value={formData.supplier} className="text-gray-900 dark:text-gray-100">
+                        {formData.supplier}
+                      </SelectItem>
+                    )}
                     {suppliers.map((s) => (
                       <SelectItem key={s} value={s} className="text-gray-900 dark:text-gray-100">
                         {s}

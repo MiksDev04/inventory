@@ -319,7 +319,7 @@ export function SuppliersView({ items }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedSupplier(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setSelectedSupplier(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSupplier} className="bg-red-600 hover:bg-red-700">
               Delete
             </AlertDialogAction>

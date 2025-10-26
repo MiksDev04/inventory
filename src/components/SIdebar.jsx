@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Package, LayoutDashboard, Settings, Users, TrendingUp, Bell, Moon, Sun, GripVertical, FolderOpen, LogOut } from "lucide-react";
+import { Package, LayoutDashboard, Settings, Users, TrendingUp, BarChart, Bell, Moon, Sun, GripVertical, FolderOpen, LogOut } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
@@ -12,6 +12,7 @@ const menuItems = [
   { id: "inventory", label: "Inventory", icon: Package },
   { id: "categories", label: "Categories", icon: FolderOpen },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
+  { id: "reports", label: "Reports", icon: BarChart },
   { id: "suppliers", label: "Suppliers", icon: Users },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -199,7 +200,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowLogoutConfirm(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={logout}>Logout</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -304,7 +304,7 @@ export function CategoriesView({ items }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedCategory(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setSelectedCategory(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteCategory} className="bg-red-600 hover:bg-red-700">
               Delete
             </AlertDialogAction>

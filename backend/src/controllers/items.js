@@ -64,6 +64,39 @@ function toUiItem(row) {
 
 export async function listItems(req, res) {
   try {
+    const { page, perPage } = req.query;
+
+    // If pagination params are not provided, return full list for backwards compatibility
+    if (!page) {
+      const rows = await query(`
+        SELECT i.id, i.sku, i.name,
+               c.name AS category,
+               s.name AS supplier,
+               i.quantity,
+               i.min_quantity AS minQuantity,
+               i.price,
+               CASE
+                 WHEN i.quantity <= 0 THEN 'out-of-stock'
+                 WHEN i.quantity <= i.min_quantity THEN 'low-stock'
+                 ELSE 'in-stock'
+               END AS status,
+               i.last_updated AS lastUpdated
+        FROM items i
+        JOIN categories c ON c.id = i.category_id
+        JOIN suppliers s  ON s.id = i.supplier_id
+        ORDER BY i.id
+      `);
+      return res.json(rows.map(toUiItem));
+    }
+
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const per = Math.max(1, parseInt(perPage, 10) || 20);
+    const offset = (p - 1) * per;
+
+    // total count
+    const cnt = await query('SELECT COUNT(*) AS cnt FROM items');
+    const total = cnt[0]?.cnt || 0;
+
     const rows = await query(`
       SELECT i.id, i.sku, i.name,
              c.name AS category,
@@ -81,8 +114,10 @@ export async function listItems(req, res) {
       JOIN categories c ON c.id = i.category_id
       JOIN suppliers s  ON s.id = i.supplier_id
       ORDER BY i.id
-    `);
-    res.json(rows.map(toUiItem));
+      LIMIT ? OFFSET ?
+    `, [per, offset]);
+
+    res.json({ data: rows.map(toUiItem), total, page: p, perPage: per });
   } catch (err) {
     console.error('listItems error', err);
     res.status(500).json({ error: 'Failed to fetch items' });

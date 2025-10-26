@@ -6,6 +6,7 @@ import itemsRouter from './routes/items.js';
 import categoriesRouter from './routes/categories.js';
 import suppliersRouter from './routes/suppliers.js';
 import notificationsRouter from './routes/notifications.js';
+import reportsRouter from './routes/reports.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/items', itemsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/reports', reportsRouter);
 
 // Fallback 404
 app.use((req, res) => {

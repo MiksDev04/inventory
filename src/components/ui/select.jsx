@@ -8,6 +8,11 @@ export function Select({ children, value, onValueChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || "");
 
+  // Keep internal selectedValue in sync when parent changes the `value` prop
+  React.useEffect(() => {
+    setSelectedValue(value || "");
+  }, [value]);
+
   const handleValueChange = (newValue) => {
     setSelectedValue(newValue);
     onValueChange?.(newValue);

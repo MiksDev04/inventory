@@ -12,6 +12,9 @@ import { getItems, getCategories, getSuppliers, createItem as apiCreateItem, upd
 
 export function InventoryDashboard() {
   const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const [totalItemsCount, setTotalItemsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [categoriesList, setCategoriesList] = useState([]);
@@ -23,15 +26,15 @@ export function InventoryDashboard() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const fetchPage = async () => {
       try {
-        const [data, cats, sups] = await Promise.all([
-          getItems(),
-          getCategories(),
-          getSuppliers(),
-        ]);
+        setLoading(true);
+        const [cats, sups] = await Promise.all([getCategories(), getSuppliers()]);
+        const itemsRes = await getItems({ page, perPage });
         if (!mounted) return;
-        setItems(data);
+        // itemsRes is { data, total, page, perPage }
+        setItems(itemsRes.data);
+        setTotalItemsCount(itemsRes.total || 0);
         setCategoriesList(cats.map(c => c.name));
         setSuppliersList(sups.map(s => s.name));
       } catch (e) {
@@ -40,9 +43,10 @@ export function InventoryDashboard() {
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
+    };
+    fetchPage();
     return () => { mounted = false };
-  }, []);
+  }, [page, perPage]);
 
   const filteredItems = items.filter(item => {
     const matchesSearch = 
@@ -63,9 +67,23 @@ export function InventoryDashboard() {
   const outOfStockCount = items.filter(item => item.status === "out-of-stock").length;
   const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
 
+  const fetchItemsPage = async (p = page, per = perPage) => {
+    try {
+      setLoading(true);
+      const itemsRes = await getItems({ page: p, perPage: per });
+      setItems(itemsRes.data);
+      setTotalItemsCount(itemsRes.total || 0);
+    } catch (e) {
+      setError('Failed to load items');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddItem = async (newItem) => {
     try {
-      const created = await apiCreateItem({
+      await apiCreateItem({
         sku: newItem.sku,
         name: newItem.name,
         category: newItem.category,
@@ -74,7 +92,8 @@ export function InventoryDashboard() {
         minQuantity: newItem.minQuantity,
         price: newItem.price,
       });
-      setItems(prev => [...prev, created]);
+      // refresh current page
+      fetchItemsPage();
     } catch (e) {
       setError('Failed to add item');
       console.error(e);
@@ -83,7 +102,7 @@ export function InventoryDashboard() {
 
   const handleUpdateItem = async (updatedItem) => {
     try {
-      const saved = await apiUpdateItem(updatedItem.id, {
+      await apiUpdateItem(updatedItem.id, {
         sku: updatedItem.sku,
         name: updatedItem.name,
         category: updatedItem.category,
@@ -93,7 +112,8 @@ export function InventoryDashboard() {
         price: updatedItem.price,
         lastUpdated: new Date().toISOString().split('T')[0]
       });
-      setItems(prev => prev.map(item => item.id === saved.id ? saved : item));
+      // refresh current page to keep consistency
+      fetchItemsPage();
     } catch (e) {
       setError('Failed to update item');
       console.error(e);
@@ -103,12 +123,15 @@ export function InventoryDashboard() {
   const handleDeleteItem = async (id) => {
     try {
       await apiDeleteItem(id);
-      setItems(prev => prev.filter(item => item.id !== id));
+      // refresh current page
+      fetchItemsPage();
     } catch (e) {
       setError('Failed to delete item');
       console.error(e);
     }
   };
+
+  const totalPages = Math.max(1, Math.ceil((totalItemsCount || 0) / perPage));
 
   return (
     <div className="p-8">
@@ -236,6 +259,23 @@ export function InventoryDashboard() {
         categories={categories}
         suppliers={suppliersList}
       />
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+          <div>Page {page} of {Math.max(1, Math.ceil((totalItemsCount || 0) / perPage))}</div>
+          <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= Math.max(1, Math.ceil((totalItemsCount || 0) / perPage))}>Next</Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-600">Per page:</div>
+          <select value={perPage} onChange={(e) => { setPerPage(parseInt(e.target.value, 10)); setPage(1); }} className="border rounded px-2 py-1">
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+      </div>
 
       {/* Add Item Dialog */}
       <AddItemDialog
