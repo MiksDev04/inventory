@@ -3,23 +3,33 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-
-// Hardcoded credentials
-const USERNAME = "admin";
-const PASSWORD = "1234";
+import * as api from '../lib/api';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (username === USERNAME && password === PASSWORD) {
-      setError("");
-      onLogin();
-    } else {
-      setError("Invalid credentials");
+    setError("");
+    setLoading(true);
+    try {
+      const res = await api.login({ username, password });
+      if (res && res.success) {
+        setError("");
+        onLogin();
+      } else {
+        setError('Invalid credentials');
+      }
+    } catch (err) {
+      console.error('Login error', err);
+      const serverMsg = err?.response?.data?.error || err?.message || 'Login failed';
+      if (serverMsg === 'invalid_credentials') setError('Invalid username or password');
+      else setError(serverMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,7 +62,7 @@ export default function LoginPage({ onLogin }) {
             />
           </div>
           {error && <div className="text-red-500 text-sm text-center">{error}</div>}
-          <Button type="submit" className="w-full">Login</Button>
+          <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
         </form>
       </Card>
     </div>

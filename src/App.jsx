@@ -1,6 +1,7 @@
 import { useState } from "react";
 import LoginPage from "./components/LoginPage";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { ProfileProvider } from './context/ProfileContext';
 import { Sidebar } from "./components/SIdebar";
 import Dashboard from "./components/DashboardView";
 import { InventoryDashboard } from "./components/InventoryDashboard";
@@ -49,6 +50,7 @@ function App() {
 
   return (
     <ThemeProvider>
+      <ProfileProvider>
       <div className="flex h-screen bg-gray-50 dark:bg-[#0d1117]">
         <Sidebar
           currentView={currentView}
@@ -64,6 +66,7 @@ function App() {
           {renderView()}
         </main>
       </div>
+      </ProfileProvider>
     </ThemeProvider>
   );
 }

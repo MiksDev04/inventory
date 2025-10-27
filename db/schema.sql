@@ -75,7 +75,9 @@ CREATE TABLE IF NOT EXISTS user_accounts (
   username      VARCHAR(100)    NOT NULL,
   password_hash VARCHAR(255)    NOT NULL,
   email         VARCHAR(320)    NOT NULL,
-  full_name     VARCHAR(255)    NOT NULL,
+  first_name    VARCHAR(100)    NOT NULL,
+  last_name     VARCHAR(100)    NOT NULL,
+  phone         VARCHAR(64)     NULL,
   role          ENUM('admin','user') NOT NULL DEFAULT 'admin',
   is_active     BOOLEAN         NOT NULL DEFAULT TRUE,
 

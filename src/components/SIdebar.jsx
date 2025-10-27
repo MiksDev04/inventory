@@ -5,6 +5,7 @@ import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
 import NotificationModal from "./NotificationModal";
 import { getUnreadCount } from "../lib/api";
+import { useProfile } from '../hooks/useProfile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
 const menuItems = [
@@ -26,6 +27,10 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [displayName, setDisplayName] = useState('');
+  const [displayRole, setDisplayRole] = useState('');
+  const [initials, setInitials] = useState('');
+  const { profile } = useProfile();
   const sidebarRef = useRef(null);
 
   // Fetch unread count on mount and periodically
@@ -44,6 +49,21 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
 
     return () => clearInterval(interval);
   }, []);
+
+  // derive display fields from shared profile context
+  useEffect(() => {
+    if (!profile) return;
+    const p = profile;
+    let name = '';
+    if (p.full_name !== undefined) name = p.full_name || p.username || '';
+    else name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.username || '';
+    setDisplayName(name || '');
+    const roleLabel = p.role === 'admin' ? 'Administrator' : (p.role || 'User');
+    setDisplayRole(roleLabel);
+    const parts = name.split(/\s+/).filter(Boolean);
+    const init = parts.length === 0 ? (p.username ? p.username.slice(0,2).toUpperCase() : '') : (parts.length === 1 ? parts[0].slice(0,2).toUpperCase() : (parts[0][0] + parts[1][0]).toUpperCase());
+    setInitials(init);
+  }, [profile]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -151,11 +171,11 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
       <div className="p-4 border-t border-gray-800 dark:border-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center">
-            <span>JB</span>
+            <span>{initials || 'JB'}</span>
           </div>
           <div className="flex-1">
-            <p className="text-sm text-gray-100 dark:text-gray-200">Justin Bautista</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Administrator</p>
+            <p className="text-sm text-gray-100 dark:text-gray-200">{displayName || 'Justin Bautista'}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{displayRole || 'Administrator'}</p>
           </div>
           <button 
             className="relative text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white"

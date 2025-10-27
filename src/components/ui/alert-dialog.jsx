@@ -1,30 +1,42 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "./utils";
 
 export function AlertDialog({ open, onOpenChange, children }) {
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
-        onClick={() => onOpenChange?.(false)}
-      />
-      {/* Dialog */}
-      <div className="relative">
-        {children}
-      </div>
-    </div>
-  );
+  // Render the dialog into document.body so it escapes any parent stacking/context
+  // issues (transforms, z-index, etc.). This guarantees the modal overlays all
+  // app content regardless of where AlertDialog is used.
+  if (typeof document !== "undefined") {
+    return ReactDOM.createPortal(
+      // Use very high z-index values so the alert dialog always appears above other app layers.
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/50 transition-opacity z-[99998]"
+          onClick={() => onOpenChange?.(false)}
+        />
+        {/* Dialog */}
+        <div className="relative">
+          {children}
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  return null;
 }
 
 export function AlertDialogContent({ children, className = "" }) {
   return (
     <div
       className={cn(
-        "relative z-50 w-full max-w-lg rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#161b22] p-6 shadow-lg",
+        // ensure the content itself is above the backdrop and other UI. Using a very large z-index
+        // prevents other components with high z-index from overlapping the modal.
+        "relative z-[100000] w-full max-w-lg rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#161b22] p-6 shadow-lg",
         className
       )}
       onClick={(e) => e.stopPropagation()}

@@ -78,6 +78,9 @@ export function ReportsView() {
             <div>Loading...</div>
           ) : (
             <div className="rounded-md border">
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">{error}</div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { X, AlertTriangle, TrendingDown, Info, Check, Trash2 } from "lucide-react";
 import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from "../lib/api";
 import { Button } from "./ui/button";
@@ -80,12 +81,17 @@ export default function NotificationModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-[#161b22] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+  if (typeof document !== "undefined") {
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0 z-[100001] flex items-center justify-center">
+        <div
+          className="fixed inset-0 bg-black/50 transition-opacity z-[100000]"
+          onClick={onClose}
+        />
+        <div
+          className="bg-white dark:bg-[#161b22] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col z-[100002]"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h2>
@@ -175,7 +181,11 @@ export default function NotificationModal({ isOpen, onClose }) {
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  return null;
 }

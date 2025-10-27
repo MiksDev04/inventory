@@ -7,6 +7,8 @@ import categoriesRouter from './routes/categories.js';
 import suppliersRouter from './routes/suppliers.js';
 import notificationsRouter from './routes/notifications.js';
 import reportsRouter from './routes/reports.js';
+import profileRouter from './routes/profile.js';
+import authRouter from './routes/auth.js';
 
 dotenv.config();
 
@@ -25,6 +27,8 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/profile', profileRouter);
+app.use('/api/auth', authRouter);
 
 // Fallback 404
 app.use((req, res) => {

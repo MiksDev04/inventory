@@ -3,10 +3,12 @@ import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock }
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
-import { getItems } from "../lib/api";
+import { getItems, getCategories, getSuppliers } from "../lib/api";
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [suppliersList, setSuppliersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -14,8 +16,12 @@ export default function Dashboard() {
     let mounted = true;
     (async () => {
       try {
-        const data = await getItems();
-        if (mounted) setItems(data);
+        const [data, cats, sups] = await Promise.all([getItems(), getCategories(), getSuppliers()]);
+        if (mounted) {
+          setItems(data);
+          setCategoriesList(Array.isArray(cats) ? cats : []);
+          setSuppliersList(Array.isArray(sups) ? sups : []);
+        }
       } catch (e) {
         if (mounted) setError("Failed to load dashboard data");
         console.error(e);
@@ -27,8 +33,8 @@ export default function Dashboard() {
   }, []);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = items.filter(item => item.status === "low-stock").length;
-  const outOfStockCount = items.filter(item => item.status === "out-of-stock").length;
+  const totalCategories = categoriesList.length;
+  const totalSuppliers = suppliersList.length;
   const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   
   const categoryBreakdown = items.reduce((acc, item) => {
@@ -89,28 +95,30 @@ export default function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Low Stock Items</CardTitle>
-              <TrendingDown className="w-4 h-4 text-orange-600 dark:text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{lowStockCount}</div>
-              <p className="text-xs text-orange-600 dark:text-orange-500 mt-1">
-                Needs attention
-              </p>
-              <Progress value={40} className="mt-3 h-2 [&>div]:bg-orange-500" />
-            </CardContent>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm">Total Categories</CardTitle>
+                <TrendingDown className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCategories}</div>
+                <p className="text-xs text-orange-600 dark:text-orange-500 mt-1">
+                  Distinct categories
+                </p>
+                <Progress value={40} className="mt-3 h-2 [&>div]:bg-orange-500" />
+              </CardContent>
+            </Card>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Out of Stock</CardTitle>
+              <CardTitle className="text-sm">Total Suppliers</CardTitle>
               <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{outOfStockCount}</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSuppliers}</div>
               <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                Immediate action required
+                Registered suppliers
               </p>
               <Progress value={60} className="mt-3 h-2 [&>div]:bg-red-500" />
             </CardContent>

@@ -138,3 +138,26 @@ export async function deleteReport(id) {
   return data;
 }
 
+// Profile API
+export async function getProfile(userId = 1) {
+  const { data } = await api.get('/profile', { params: { userId } });
+  return data;
+}
+
+export async function updateProfile(payload, userId = 1) {
+  const { data } = await api.put('/profile', payload, { params: { userId } });
+  return data;
+}
+
+export async function changePassword(payload, userId = 1) {
+  // payload: { currentPassword, newPassword }
+  const { data } = await api.put('/profile/password', payload, { params: { userId } });
+  return data;
+}
+
+// Auth
+export async function login(payload) {
+  const { data } = await api.post('/auth/login', payload);
+  return data;
+}
+

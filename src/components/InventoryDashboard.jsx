@@ -131,7 +131,7 @@ export function InventoryDashboard() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil((totalItemsCount || 0) / perPage));
+  // computed when rendering; no need for a separate variable
 
   return (
     <div className="p-8">

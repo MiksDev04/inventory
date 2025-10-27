@@ -70,10 +70,10 @@ VALUES
 
 -- User Accounts (admin account with plain password for demo - in production, use bcrypt)
 -- Password: inventory123
-INSERT INTO user_accounts (username, password_hash, email, full_name, role, is_active)
+INSERT INTO user_accounts (username, password_hash, email, first_name, last_name, phone, role, is_active)
 VALUES
-  ('admin', '$2b$10$rKZYQZ0cZ0cZ0cZ0cZ0cZ0eZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0c', 'admin@inventory.com', 'Justin Bautista', 'admin', TRUE)
-ON DUPLICATE KEY UPDATE username = VALUES(username);
+  ('admin', '$2b$10$rKZYQZ0cZ0cZ0cZ0cZ0cZ0eZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0cZ0c', 'admin@inventory.com', 'Justin', 'Bautista', '+1 (555) 123-4567', 'admin', TRUE)
+ON DUPLICATE KEY UPDATE username = VALUES(username), email = VALUES(email), first_name = VALUES(first_name), last_name = VALUES(last_name), phone = VALUES(phone);
 
 -- Sample Notifications (auto-generated for low stock and out of stock items)
 -- Get the admin user_id
