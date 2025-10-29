@@ -3,7 +3,7 @@ import * as api from '../lib/api';
 
 const ProfileContext = createContext(null);
 
-export default function ProfileProvider({ children }) {
+export function ProfileProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,3 +46,6 @@ export default function ProfileProvider({ children }) {
 
 // export context for a separate hook file
 export { ProfileContext };
+
+// also provide a default export for compatibility
+export default ProfileProvider;
