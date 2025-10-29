@@ -61,7 +61,7 @@ export function InventoryTable({ items, onUpdate, onDelete, categories = [], sup
                   <TableHead>Supplier</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Updated</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead >Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
