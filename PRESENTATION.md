@@ -42,6 +42,22 @@ While you demo, point out network calls in devtools to show the backend endpoint
 - Patterns: Small REST API surface (`/api/auth`, `/api/profile`, `/api/items`, `/api/notifications`, ...). Dialogs and large overlays use React portals to ensure they sit above any stacking context.
 - Dev tooling: Vite for fast dev reload, simple node scripts for DB seeding and maintenance.
 
+## Install commands
+
+Run these commands from PowerShell in the project root to install all project packages:
+
+```powershell
+# Install frontend dependencies (project root)
+npm install
+
+# Install backend dependencies
+cd backend
+npm install
+cd ..
+```
+
+That's it — the above commands install all packages declared in `package.json` (root) and `backend/package.json`.
+
 ---
 
 ## Closing (10–15s)
