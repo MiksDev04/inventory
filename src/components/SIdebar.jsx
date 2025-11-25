@@ -31,7 +31,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const [displayRole, setDisplayRole] = useState('');
   const [initials, setInitials] = useState('');
   const { profile } = useProfile();
-  const sidebarRef = useRef(null);
+  const sidebarRef = useRef(null); 
 
   // Fetch unread count on mount and periodically
   useEffect(() => {

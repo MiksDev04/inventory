@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   is_read       BOOLEAN         NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   read_at       TIMESTAMP       NULL,
-
+ 
   CONSTRAINT pk_notifications PRIMARY KEY (id),
   CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES user_accounts(id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_notifications_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE ON UPDATE CASCADE
