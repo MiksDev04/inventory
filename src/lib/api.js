@@ -87,50 +87,133 @@ export async function deleteNotification(id) {
   return fb.deleteNotification ? fb.deleteNotification(id) : null; 
 }
 
-export async function generateStockNotifications(userId) {
-  if (!userId) {
-    const users = await fb.listUsers();
-    userId = users && users.length > 0 ? users[0].id : '1';
-  }
-  
-  // Get existing notifications to avoid duplicates
-  const existingNotifications = await fb.listNotificationsForUser(userId);
-  const unreadNotifsByProduct = existingNotifications
-    .filter(n => !n.is_read && n.product_id)
-    .reduce((acc, n) => {
-      acc[n.product_id] = n;
-      return acc;
-    }, {});
-  
-  const products = await fb.listProducts();
-  const created = [];
-  for (const p of products) {
-    const qty = Number(p.quantity || 0);
-    const minQ = Number(p.min_quantity || p.minQuantity || 0);
+// Check and create notification for a specific product
+export async function checkProductStockNotification(productId, userId) {
+  try {
+    if (!userId) {
+      const users = await fb.listUsers();
+      userId = users && users.length > 0 ? users[0].id : '1';
+    }
     
-    // Check if product needs a notification
+    // Get the specific product
+    const product = await fb.getProduct(productId);
+    if (!product) return null;
+    
+    const qty = Number(product.quantity || 0);
+    const minQ = Number(product.min_quantity || product.minQuantity || 0);
+    
+    // Get existing notifications for this product
+    const existingNotifications = await fb.listNotificationsForUser(userId);
+    const productNotifs = existingNotifications.filter(n => n.product_id === productId);
+    
+    // Check if product is low/out of stock
     if (qty === 0 || qty < minQ) {
       const type = qty === 0 ? 'out_of_stock' : 'low_stock';
-      const title = qty === 0 ? `${p.name} is out of stock` : `${p.name} is running low`;
+      const title = qty === 0 ? `${product.name} is out of stock` : `${product.name} is running low`;
       const message = qty === 0
-        ? `Product "${p.name}" (SKU: ${p.sku}) is currently out of stock. Please reorder immediately.`
-        : `Product "${p.name}" (SKU: ${p.sku}) has only ${qty} units left (minimum: ${minQ}). Consider restocking soon.`;
+        ? `Product "${product.name}" (SKU: ${product.sku}) is currently out of stock. Please reorder immediately.`
+        : `Product "${product.name}" (SKU: ${product.sku}) has only ${qty} units left (minimum: ${minQ}). Consider restocking soon.`;
       
-      // Only create notification if no unread notification exists for this product with same type
-      const existingNotif = unreadNotifsByProduct[p.id];
-      if (!existingNotif || existingNotif.type !== type) {
-        const nid = await fb.createNotification({ user_id: userId, type, title, message, product_id: p.id });
-        created.push(nid);
+      // Check if unread notification already exists for this product with this type
+      const hasUnreadNotif = productNotifs.some(n => !n.is_read && n.type === type);
+      
+      // Only create notification if no unread notification exists
+      if (!hasUnreadNotif) {
+        return await fb.createNotification({ user_id: userId, type, title, message, product_id: productId });
       }
     } else {
       // Product is now in good stock - mark any existing low/out of stock notifications as read
-      const existingNotif = unreadNotifsByProduct[p.id];
-      if (existingNotif && (existingNotif.type === 'low_stock' || existingNotif.type === 'out_of_stock')) {
-        await fb.updateNotification(existingNotif.id, { is_read: true });
+      for (const notif of productNotifs) {
+        if (!notif.is_read && (notif.type === 'low_stock' || notif.type === 'out_of_stock')) {
+          await fb.updateNotification(notif.id, { is_read: true });
+        }
       }
     }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to check product stock notification:', error);
+    return null;
   }
-  return created;
+}
+
+// Global flag to prevent concurrent notification generation
+let isGeneratingNotifications = false;
+let lastNotificationCheck = null;
+const NOTIFICATION_COOLDOWN = 60000; // 1 minute cooldown between checks
+
+export async function generateStockNotifications(userId) {
+  // Prevent concurrent execution
+  if (isGeneratingNotifications) {
+    console.log('Notification generation already in progress, skipping...');
+    return [];
+  }
+  
+  // Prevent too frequent checks (cooldown period)
+  const now = Date.now();
+  if (lastNotificationCheck && (now - lastNotificationCheck) < NOTIFICATION_COOLDOWN) {
+    console.log('Notification check on cooldown, skipping...');
+    return [];
+  }
+  
+  isGeneratingNotifications = true;
+  lastNotificationCheck = now;
+  
+  try {
+    if (!userId) {
+      const users = await fb.listUsers();
+      userId = users && users.length > 0 ? users[0].id : '1';
+    }
+    
+    // Get existing notifications to avoid duplicates
+    const existingNotifications = await fb.listNotificationsForUser(userId);
+    const notifsByProduct = existingNotifications
+      .filter(n => n.product_id)
+      .reduce((acc, n) => {
+        if (!acc[n.product_id]) {
+          acc[n.product_id] = [];
+        }
+        acc[n.product_id].push(n);
+        return acc;
+      }, {});
+    
+    const products = await fb.listProducts();
+    const created = [];
+    for (const p of products) {
+      const qty = Number(p.quantity || 0);
+      const minQ = Number(p.min_quantity || p.minQuantity || 0);
+      
+      // Check if product needs a notification
+      if (qty === 0 || qty < minQ) {
+        const type = qty === 0 ? 'out_of_stock' : 'low_stock';
+        const title = qty === 0 ? `${p.name} is out of stock` : `${p.name} is running low`;
+        const message = qty === 0
+          ? `Product "${p.name}" (SKU: ${p.sku}) is currently out of stock. Please reorder immediately.`
+          : `Product "${p.name}" (SKU: ${p.sku}) has only ${qty} units left (minimum: ${minQ}). Consider restocking soon.`;
+        
+        // Check if any unread notification already exists for this product with this type
+        const productNotifs = notifsByProduct[p.id] || [];
+        const hasUnreadNotif = productNotifs.some(n => !n.is_read && n.type === type);
+        
+        // Only create notification if no unread notification exists for this product with same type
+        if (!hasUnreadNotif) {
+          const nid = await fb.createNotification({ user_id: userId, type, title, message, product_id: p.id });
+          created.push(nid);
+        }
+      } else {
+        // Product is now in good stock - mark any existing low/out of stock notifications as read
+        const productNotifs = notifsByProduct[p.id] || [];
+        for (const notif of productNotifs) {
+          if (!notif.is_read && (notif.type === 'low_stock' || notif.type === 'out_of_stock')) {
+            await fb.updateNotification(notif.id, { is_read: true });
+          }
+        }
+      }
+    }
+    return created;
+  } finally {
+    isGeneratingNotifications = false;
+  }
 }
 
 // Reports
@@ -212,17 +295,11 @@ export async function changePassword(payload, userId) {
     throw new Error('User not found');
   }
   
-  // Verify current password
-  const isHashedMatch = await fb.comparePassword(payload.currentPassword, currentUser.password_hash);
-  const isPlainMatch = payload.currentPassword === currentUser.password_hash;
+  // Verify current password against hashed value
+  const isValid = await fb.comparePassword(payload.currentPassword, currentUser.password_hash);
   
-  if (!isHashedMatch && !isPlainMatch) {
-    // Also check against hardcoded admin password if username is admin
-    if (currentUser.username === 'admin' && payload.currentPassword === '12345678') {
-      // Allow this for admin
-    } else {
-      throw new Error('incorrect_current_password');
-    }
+  if (!isValid) {
+    throw new Error('incorrect_current_password');
   }
   
   // Validate new password
@@ -261,6 +338,7 @@ export default {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  checkProductStockNotification,
   generateStockNotifications,
   getReports,
   createReport,

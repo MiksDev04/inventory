@@ -15,16 +15,16 @@ import {
   writeBatch
 } from 'firebase/firestore';
 
-// Firebase config (kept from project)
+// Firebase config
 const firebaseConfig = {
-  apiKey: 'AIzaSyAtQmAaUFEuyJmeOq3M3ZIkI3a1gna_Do8',
-  authDomain: 'nosql-demo-e5885.firebaseapp.com',
-  databaseURL: 'https://nosql-demo-e5885-default-rtdb.firebaseio.com',
-  projectId: 'nosql-demo-e5885',
-  storageBucket: 'nosql-demo-e5885.firebasestorage.app',
-  messagingSenderId: '377685820338',
-  appId: '1:377685820338:web:12a7618478c1cdeda79aab',
-  measurementId: 'G-EWRZ4F64R6'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -192,33 +192,13 @@ export async function updateUser(id, payload) {
 }
 
 export async function verifyLogin(username, password) {
-  // Temporary fallback for the specific admin user to bypass Firestore rules issues.
-  if (username === 'admin' && password === '12345678') {
-    return {
-      id: 'firebase-admin-user', // A placeholder ID
-      username: 'admin',
-      full_name: 'System Administrator',
-      email: 'admin@example.com',
-      role: 'admin',
-      is_active: true,
-      created_at: new Date('2025-11-25T11:14:42Z'), // Using the provided timestamp in UTC
-      updated_at: new Date('2025-11-25T11:14:59Z')
-    };
-  }
-
-  // The rest of the logic remains for other users.
+  // Get user from database
   const user = await getUserByUsername(username);
   if (!user) return null;
 
-  // First, try to compare as a hashed password, which is the correct, secure way.
+  // Compare password with hashed value in database
   const isHashedMatch = await comparePassword(password, user.password_hash || '');
   if (isHashedMatch) {
-    return user;
-  }
-
-  // As a fallback for the existing user, check if the password matches the unhashed stored value.
-  // This is insecure and should be phased out.
-  if (password === user.password_hash) {
     return user;
   }
 

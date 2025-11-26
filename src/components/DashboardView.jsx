@@ -35,13 +35,6 @@ export default function Dashboard({ products: initialProducts, categories: initi
             setProducts(data);
             setCategoriesList(Array.isArray(cats) ? cats : []);
             setSuppliersList(Array.isArray(sups) ? sups : []);
-            
-            // Generate stock notifications for low/out of stock items
-            try {
-              await generateStockNotifications();
-            } catch (e) {
-              console.error('Failed to generate notifications', e);
-            }
           }
         } catch (e) {
           if (mounted) setError("Failed to load dashboard data");
@@ -51,15 +44,6 @@ export default function Dashboard({ products: initialProducts, categories: initi
         }
       })();
       return () => { mounted = false };
-    } else {
-      // We have initial data, just generate notifications
-      (async () => {
-        try {
-          await generateStockNotifications();
-        } catch (e) {
-          console.error('Failed to generate notifications', e);
-        }
-      })();
     }
   }, []);
 

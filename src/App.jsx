@@ -75,16 +75,9 @@ function App() {
 
   const handleAddProduct = async (productData) => {
     try {
-      await api.createProduct(productData);
+      const newProduct = await api.createProduct(productData);
       fetchProducts(); // Refetch products after adding
       showToast('Product added successfully!', 'success');
-      
-      // Regenerate notifications for new stock levels
-      try {
-        await api.generateStockNotifications();
-      } catch (e) {
-        console.error('Failed to regenerate notifications', e);
-      }
     } catch (error) {
       console.error("Error adding product:", error);
       showToast('Failed to add product', 'error');
@@ -97,11 +90,11 @@ function App() {
       fetchProducts(); // Refetch products after updating
       showToast('Product updated successfully!', 'success');
       
-      // Regenerate notifications for updated stock levels
+      // Check only this specific product for stock notification
       try {
-        await api.generateStockNotifications();
+        await api.checkProductStockNotification(productId);
       } catch (e) {
-        console.error('Failed to regenerate notifications', e);
+        console.error('Failed to check stock notification', e);
       }
     } catch (error) {
       console.error("Error updating product:", error);
@@ -114,13 +107,6 @@ function App() {
       await api.deleteProduct(productId);
       fetchProducts(); // Refetch products after deleting
       showToast('Product deleted successfully!', 'success');
-      
-      // Regenerate notifications after deletion
-      try {
-        await api.generateStockNotifications();
-      } catch (e) {
-        console.error('Failed to regenerate notifications', e);
-      }
     } catch (error) {
       console.error("Error deleting product:", error);
       showToast('Failed to delete product', 'error');
