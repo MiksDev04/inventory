@@ -68,7 +68,7 @@ export function SelectContent({ children, className = "" }) {
   );
 }
 
-export function SelectItem({ value, children, className = "" }) {
+export function SelectProduct({ value, children, className = "" }) {
   const { selectedValue, handleValueChange } = useContext(SelectContext);
   const isSelected = selectedValue === value;
 

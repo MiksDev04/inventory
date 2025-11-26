@@ -3,52 +3,79 @@ import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock }
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
-import { getItems, getCategories, getSuppliers } from "../lib/api";
+import { getProducts, getCategories, getSuppliers, generateStockNotifications } from "../lib/api";
 
-export default function Dashboard() {
-  const [items, setItems] = useState([]);
-  const [categoriesList, setCategoriesList] = useState([]);
-  const [suppliersList, setSuppliersList] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function Dashboard({ products: initialProducts, categories: initialCategories, suppliers: initialSuppliers }) {
+  const [products, setProducts] = useState(initialProducts || []);
+  const [categoriesList, setCategoriesList] = useState(initialCategories || []);
+  const [suppliersList, setSuppliersList] = useState(initialSuppliers || []);
+  const [loading, setLoading] = useState(!initialProducts || !initialCategories || !initialSuppliers);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [data, cats, sups] = await Promise.all([getItems(), getCategories(), getSuppliers()]);
-        if (mounted) {
-          setItems(data);
-          setCategoriesList(Array.isArray(cats) ? cats : []);
-          setSuppliersList(Array.isArray(sups) ? sups : []);
+    // Update state when props change
+    if (initialProducts) setProducts(initialProducts);
+    if (initialCategories) setCategoriesList(initialCategories);
+    if (initialSuppliers) setSuppliersList(initialSuppliers);
+    
+    // If we have initial data, we're not loading
+    if (initialProducts && initialCategories && initialSuppliers) {
+      setLoading(false);
+    }
+  }, [initialProducts, initialCategories, initialSuppliers]);
+
+  useEffect(() => {
+    // Only fetch if no initial data was provided
+    if (!initialProducts || !initialCategories || !initialSuppliers) {
+      let mounted = true;
+      (async () => {
+        try {
+          const [data, cats, sups] = await Promise.all([getProducts(), getCategories(), getSuppliers()]);
+          if (mounted) {
+            setProducts(data);
+            setCategoriesList(Array.isArray(cats) ? cats : []);
+            setSuppliersList(Array.isArray(sups) ? sups : []);
+            
+            // Generate stock notifications for low/out of stock items
+            try {
+              await generateStockNotifications();
+            } catch (e) {
+              console.error('Failed to generate notifications', e);
+            }
+          }
+        } catch (e) {
+          if (mounted) setError("Failed to load dashboard data");
+          console.error(e);
+        } finally {
+          if (mounted) setLoading(false);
         }
-      } catch (e) {
-        if (mounted) setError("Failed to load dashboard data");
-        console.error(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false };
+      })();
+      return () => { mounted = false };
+    } else {
+      // We have initial data, just generate notifications
+      (async () => {
+        try {
+          await generateStockNotifications();
+        } catch (e) {
+          console.error('Failed to generate notifications', e);
+        }
+      })();
+    }
   }, []);
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalProducts = (products || []).reduce((sum, product) => sum + product.quantity, 0);
   const totalCategories = categoriesList.length;
   const totalSuppliers = suppliersList.length;
-  const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const totalValue = (products || []).reduce((sum, product) => sum + (product.quantity * product.price), 0);
   
-  const categoryBreakdown = items.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + item.quantity;
+  const categoryBreakdown = (products || []).reduce((acc, product) => {
+    acc[product.category] = (acc[product.category] || 0) + product.quantity;
     return acc;
   }, {});
 
-  const recentlyUpdated = [...items]
-    .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-    .slice(0, 5);
+  const recentlyUpdated = (products || []).slice().sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()).slice(0,5);
 
-  const topValueItems = [...items]
-    .sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price))
-    .slice(0, 5);
+  const topValueProducts = (products || []).slice().sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price)).slice(0,5);
 
   return (
     <div className="p-6 min-h-screen bg-gray-50 dark:bg-[#0d1117]">
@@ -57,24 +84,23 @@ export default function Dashboard() {
           <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
         </div>
 
-        {loading && (
+        {loading ? (
           <Card className="mb-6"><CardContent className="pt-6">Loading...</CardContent></Card>
-        )}
-        {!!error && (
+        ) : error ? (
           <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
-        )}
-
+        ) : (
+          <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Total Items</CardTitle>
+              <CardTitle className="text-sm">Total Products</CardTitle>
               <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalProducts.toLocaleString()}</div>
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Across {items.length} products
+                Across {products.length} products
               </p>
               <Progress value={75} className="mt-3 h-2" />
             </CardContent>
@@ -134,12 +160,12 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {Object.entries(categoryBreakdown).map(([category, count]) => {
-                  const percentage = (count / totalItems) * 100;
+                  const percentage = (count / totalProducts) * 100;
                   return (
                     <div key={category}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-700 dark:text-gray-300">{category}</span>
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{count} items</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{count} products</span>
                       </div>
                       <Progress value={percentage} className="h-2" />
                     </div>
@@ -149,22 +175,22 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Top Value Items */}
+          {/* Top Value Products */}
           <Card>
-            <CardHeader>
-              <CardTitle>Top Value Items</CardTitle>
+              <CardHeader>
+                <CardTitle>Top Value Products</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topValueItems.map((item) => {
-                  const itemValue = item.quantity * item.price;
+                {topValueProducts.map((product) => {
+                  const productValue = product.quantity * product.price;
                   return (
-                    <div key={item.id} className="flex items-center justify-between">
+                    <div key={product.id} className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm text-gray-900 dark:text-gray-200">{item.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.quantity} units × ₱{item.price.toLocaleString()}</p>
+                        <p className="text-sm text-gray-900 dark:text-gray-200">{product.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{product.quantity} units × ₱{product.price.toLocaleString()}</p>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">₱{itemValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">₱{productValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   );
                 })}
@@ -175,29 +201,31 @@ export default function Dashboard() {
 
         {/* Recently Updated */}
         <Card>
-          <CardHeader>
+              <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              Recently Updated Items
+              Recently Updated Products
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentlyUpdated.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0 border-gray-200 dark:border-gray-800">
+              {recentlyUpdated.map((product) => (
+                <div key={product.id} className="flex items-center justify-between py-2 border-b last:border-0 border-gray-200 dark:border-gray-800">
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900 dark:text-gray-200">{item.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">SKU: {item.sku}</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-200">{product.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">SKU: {product.sku}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-900 dark:text-gray-200">{item.quantity} units</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.lastUpdated}</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-200">{product.quantity} units</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{product.lastUpdated}</p>
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
   );
 }

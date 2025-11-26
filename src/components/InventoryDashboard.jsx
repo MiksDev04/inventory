@@ -3,18 +3,18 @@ import { Package, Plus, Search, Filter, Download, TrendingUp, TrendingDown, Aler
 import { PesoIcon } from "./icons/PesoIcon";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { InventoryTable } from "./InventoryTable";
-import { AddItemDialog } from "./AddItemDialog";
+import { AddProductDialog } from "./AddProductDialog";
 import { Badge } from "./ui/badge";
-import { getItems, getCategories, getSuppliers, createItem as apiCreateItem, updateItem as apiUpdateItem, deleteItem as apiDeleteItem } from "../lib/api";
+import { getProducts, getCategories, getSuppliers, createProduct as apiCreateProduct, updateProduct as apiUpdateProduct, deleteProduct as apiDeleteProduct } from "../lib/api";
 
 export function InventoryDashboard() {
-  const [items, setItems] = useState([]);
+  const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const [totalItemsCount, setTotalItemsCount] = useState(0);
+  const [totalProductsCount, setTotalProductsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [categoriesList, setCategoriesList] = useState([]);
@@ -30,15 +30,15 @@ export function InventoryDashboard() {
       try {
         setLoading(true);
         const [cats, sups] = await Promise.all([getCategories(), getSuppliers()]);
-        const itemsRes = await getItems({ page, perPage });
+        const productsRes = await getProducts({ page, perPage });
         if (!mounted) return;
-        // itemsRes is { data, total, page, perPage }
-        setItems(itemsRes.data);
-        setTotalItemsCount(itemsRes.total || 0);
-        setCategoriesList(cats.map(c => c.name));
-        setSuppliersList(sups.map(s => s.name));
+        // productsRes is { data, total, page, perPage }
+        setProducts(productsRes.data);
+        setTotalProductsCount(productsRes.total || 0);
+        setCategoriesList(cats);
+        setSuppliersList(sups);
       } catch (e) {
-        if (mounted) setError("Failed to load items");
+        if (mounted) setError("Failed to load products");
         console.error(e);
       } finally {
         if (mounted) setLoading(false);
@@ -48,85 +48,77 @@ export function InventoryDashboard() {
     return () => { mounted = false };
   }, [page, perPage]);
 
-  const filteredItems = items.filter(item => {
+  const filteredProducts = (products || []).filter(product => {
     const matchesSearch = 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.supplier.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const categories = categoriesList.length ? categoriesList : Array.from(new Set(items.map(item => item.category)));
+  const categories = categoriesList.length ? categoriesList : Array.from(new Set((products || []).map(product => product.category))).map(name => ({ id: name, name }));
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = items.filter(item => item.status === "low-stock").length;
-  const outOfStockCount = items.filter(item => item.status === "out-of-stock").length;
-  const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const totalProducts = (products || []).reduce((sum, product) => sum + product.quantity, 0);
+  const lowStockCount = (products || []).filter(product => product.status === "low-stock").length;
+  const outOfStockCount = (products || []).filter(product => product.status === "out-of-stock").length;
+  const totalValue = (products || []).reduce((sum, product) => sum + (product.quantity * product.price), 0);
 
-  const fetchItemsPage = async (p = page, per = perPage) => {
+  const fetchProductsPage = async (p = page, per = perPage) => {
     try {
       setLoading(true);
-      const itemsRes = await getItems({ page: p, perPage: per });
-      setItems(itemsRes.data);
-      setTotalItemsCount(itemsRes.total || 0);
+      const productsRes = await getProducts({ page: p, perPage: per });
+      setProducts(productsRes.data);
+      setTotalProductsCount(productsRes.total || 0);
     } catch (e) {
-      setError('Failed to load items');
+      setError('Failed to load products');
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddItem = async (newItem) => {
+  const handleAddProduct = async (newProduct) => {
     try {
-      await apiCreateItem({
-        sku: newItem.sku,
-        name: newItem.name,
-        category: newItem.category,
-        supplier: newItem.supplier,
-        quantity: newItem.quantity,
-        minQuantity: newItem.minQuantity,
-        price: newItem.price,
+      await apiCreateProduct({
+        sku: newProduct.sku,
+        name: newProduct.name,
+        category: newProduct.category,
+        supplier: newProduct.supplier,
+        quantity: newProduct.quantity,
+        minQuantity: newProduct.minQuantity,
+        price: newProduct.price,
       });
       // refresh current page
-      fetchItemsPage();
+      fetchProductsPage();
     } catch (e) {
-      setError('Failed to add item');
+      setError('Failed to add product');
       console.error(e);
     }
   };
 
-  const handleUpdateItem = async (updatedItem) => {
+  const handleUpdateProduct = async (updatedProduct) => {
+    console.log('handleUpdateProduct received:', updatedProduct);
     try {
-      await apiUpdateItem(updatedItem.id, {
-        sku: updatedItem.sku,
-        name: updatedItem.name,
-        category: updatedItem.category,
-        supplier: updatedItem.supplier,
-        quantity: updatedItem.quantity,
-        minQuantity: updatedItem.minQuantity,
-        price: updatedItem.price,
-        lastUpdated: new Date().toISOString().split('T')[0]
-      });
-      // refresh current page to keep consistency
-      fetchItemsPage();
+      await apiUpdateProduct(updatedProduct.id, updatedProduct);
+      console.log('API call successful, refreshing...');
+      fetchProductsPage();
     } catch (e) {
-      setError('Failed to update item');
-      console.error(e);
+      setError('Failed to update product');
+      console.error('Update error:', e);
     }
   };
 
-  const handleDeleteItem = async (id) => {
+  const handleDeleteProduct = async (id) => {
     try {
-      await apiDeleteItem(id);
+      await apiDeleteProduct(id);
       // refresh current page
-      fetchItemsPage();
+      fetchProductsPage();
     } catch (e) {
-      setError('Failed to delete item');
+      setError('Failed to delete product');
       console.error(e);
     }
   };
@@ -149,23 +141,23 @@ export function InventoryDashboard() {
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
               <Plus className="w-4 h-4" />
-              Add Item
+              Add Product
             </Button>
           </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-400">Manage and track your inventory items</p>
+        <p className="text-gray-600 dark:text-gray-400">Manage and track your inventory products</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Total Items</CardTitle>
+            <CardTitle className="text-sm">Total Products</CardTitle>
             <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">{totalItems}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across {items.length} products</p>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">{totalProducts}</div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across {products.length} products</p>
           </CardContent>
         </Card>
 
@@ -187,7 +179,7 @@ export function InventoryDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-gray-900 dark:text-gray-100">{lowStockCount}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Items need reorder</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Products need reorder</p>
           </CardContent>
         </Card>
 
@@ -198,7 +190,7 @@ export function InventoryDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-gray-900 dark:text-gray-100">{outOfStockCount}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Items unavailable</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Products unavailable</p>
           </CardContent>
         </Card>
       </div>
@@ -223,9 +215,9 @@ export function InventoryDashboard() {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectProduct value="all">All Categories</SelectProduct>
                 {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                  <SelectProduct key={category} value={category}>{category}</SelectProduct>
                 ))}
               </SelectContent>
             </Select>
@@ -235,10 +227,10 @@ export function InventoryDashboard() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="in-stock">In Stock</SelectItem>
-                <SelectItem value="low-stock">Low Stock</SelectItem>
-                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                <SelectProduct value="all">All Status</SelectProduct>
+                <SelectProduct value="in-stock">In Stock</SelectProduct>
+                <SelectProduct value="low-stock">Low Stock</SelectProduct>
+                <SelectProduct value="out-of-stock">Out of Stock</SelectProduct>
               </SelectContent>
             </Select>
           </div>
@@ -247,15 +239,15 @@ export function InventoryDashboard() {
 
       {/* Inventory Table */}
       {loading && (
-        <Card className="mb-6"><CardContent className="pt-6">Loading items...</CardContent></Card>
+        <Card className="mb-6"><CardContent className="pt-6">Loading products...</CardContent></Card>
       )}
       {!!error && (
         <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
       )}
       <InventoryTable 
-        items={filteredItems} 
-        onUpdate={handleUpdateItem}
-        onDelete={handleDeleteItem}
+        products={filteredProducts} 
+        onUpdate={handleUpdateProduct}
+        onDelete={handleDeleteProduct}
         categories={categories}
         suppliers={suppliersList}
       />
@@ -264,8 +256,8 @@ export function InventoryDashboard() {
       <div className="flex items-center justify-between mt-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
-          <div>Page {page} of {Math.max(1, Math.ceil((totalItemsCount || 0) / perPage))}</div>
-          <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= Math.max(1, Math.ceil((totalItemsCount || 0) / perPage))}>Next</Button>
+          <div>Page {page} of {Math.max(1, Math.ceil((totalProductsCount || 0) / perPage))}</div>
+          <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= Math.max(1, Math.ceil((totalProductsCount || 0) / perPage))}>Next</Button>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-sm text-gray-600">Per page:</div>
@@ -277,11 +269,11 @@ export function InventoryDashboard() {
         </div>
       </div>
 
-      {/* Add Item Dialog */}
-      <AddItemDialog
+      {/* Add Product Dialog */}
+      <AddProductDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddItem}
+        onAdd={handleAddProduct}
         categories={categories}
         suppliers={suppliersList}
       />

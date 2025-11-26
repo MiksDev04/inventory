@@ -88,7 +88,7 @@ export function DropdownMenuContent({ children, align = "start", className = "" 
   );
 }
 
-export function DropdownMenuItem({ children, onClick, className = "" }) {
+export function DropdownMenuProduct({ children, onClick, className = "" }) {
   const { setIsOpen } = useContext(DropdownMenuContext);
 
   const handleClick = (e) => {

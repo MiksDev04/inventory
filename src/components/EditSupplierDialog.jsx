@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from './ui/select';
 
 export function EditSupplierDialog({ isOpen, onClose, onUpdate, supplier }) {
   const [formData, setFormData] = useState({
@@ -112,8 +112,8 @@ export function EditSupplierDialog({ isOpen, onClose, onUpdate, supplier }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='active'>Active</SelectItem>
-                  <SelectItem value='inactive'>Inactive</SelectItem>
+                  <SelectProduct value='active'>Active</SelectProduct>
+                  <SelectProduct value='inactive'>Inactive</SelectProduct>
                 </SelectContent>
               </Select>
             </div>

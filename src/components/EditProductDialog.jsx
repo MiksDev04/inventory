@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 
-export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [], suppliers = [] }) {
+export function EditProductDialog({ product, isOpen, onClose, onUpdate, categories = [], suppliers = [] }) {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -17,13 +17,16 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
   });
 
   useEffect(() => {
-    if (item) {
-      setFormData(item);
+    if (product) {
+      setFormData(product);
     }
-  }, [item]);
+  }, [product]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    console.log('Form submitted!', formData);
+    console.log('Product ID:', product.id, 'Type:', typeof product.id);
     
     // Determine status based on quantity and minQuantity
     let status = "in-stock";
@@ -33,7 +36,21 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
       status = "low-stock";
     }
 
-    onUpdate({ ...formData, status });
+    // Only send the fields we want to update
+    const updateData = {
+      id: String(product.id), // Ensure ID is a string
+      name: formData.name,
+      sku: formData.sku,
+      category: formData.category,
+      supplier: formData.supplier,
+      quantity: Number(formData.quantity),
+      minQuantity: Number(formData.minQuantity),
+      price: Number(formData.price),
+      status
+    };
+    
+    console.log('Calling onUpdate with:', updateData);
+    onUpdate(updateData);
   };
 
   const handleChange = (field, value) => {
@@ -47,7 +64,7 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 border border-gray-200 dark:border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Item</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Product</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -62,13 +79,13 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Item Name *
+                  Product Name *
                 </label>
                 <Input
                   required
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="Enter item name"
+                  placeholder="Enter product name"
                 />
               </div>
 
@@ -97,16 +114,16 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
-                    {/* If the item's current category isn't in the categories list, show it first for transparency */}
-                    {formData.category && !categories.includes(formData.category) && (
-                      <SelectItem key={`current-${formData.category}`} value={formData.category} className="text-gray-900 dark:text-gray-100">
+                    {/* If the product's current category isn't in the categories list, show it first for transparency */}
+                    {formData.category && !categories.find(c => c.name === formData.category) && (
+                      <SelectProduct key={`current-${formData.category}`} value={formData.category} className="text-gray-900 dark:text-gray-100">
                         {formData.category}
-                      </SelectItem>
+                      </SelectProduct>
                     )}
                     {categories.map((c) => (
-                      <SelectItem key={c} value={c} className="text-gray-900 dark:text-gray-100">
-                        {c}
-                      </SelectItem>
+                      <SelectProduct key={c.id} value={c.name} className="text-gray-900 dark:text-gray-100">
+                        {c.name}
+                      </SelectProduct>
                     ))}
                   </SelectContent>
                 </Select>
@@ -121,16 +138,16 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
-                    {/* If the item's current supplier isn't in the suppliers list, show it first for transparency */}
-                    {formData.supplier && !suppliers.includes(formData.supplier) && (
-                      <SelectItem key={`current-sup-${formData.supplier}`} value={formData.supplier} className="text-gray-900 dark:text-gray-100">
+                    {/* If the product's current supplier isn't in the suppliers list, show it first for transparency */}
+                    {formData.supplier && !suppliers.find(s => s.name === formData.supplier) && (
+                      <SelectProduct key={`current-sup-${formData.supplier}`} value={formData.supplier} className="text-gray-900 dark:text-gray-100">
                         {formData.supplier}
-                      </SelectItem>
+                      </SelectProduct>
                     )}
                     {suppliers.map((s) => (
-                      <SelectItem key={s} value={s} className="text-gray-900 dark:text-gray-100">
-                        {s}
-                      </SelectItem>
+                      <SelectProduct key={s.id} value={s.name} className="text-gray-900 dark:text-gray-100">
+                        {s.name}
+                      </SelectProduct>
                     ))}
                   </SelectContent>
                 </Select>
@@ -187,7 +204,7 @@ export function EditItemDialog({ item, isOpen, onClose, onUpdate, categories = [
               Cancel
             </Button>
             <Button type="submit">
-              Update Item
+              Update Product
             </Button>
           </div>
         </form>

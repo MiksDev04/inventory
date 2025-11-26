@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 
 const colorOptions = [
   { value: "blue", label: "Blue", class: "bg-blue-500" },
@@ -99,9 +99,9 @@ export function EditCategoryDialog({ isOpen, onClose, onUpdate, category }) {
                   </SelectTrigger>
                   <SelectContent>
                     {iconOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectProduct key={option.value} value={option.value}>
                         {option.label}
-                      </SelectItem>
+                      </SelectProduct>
                     ))}
                   </SelectContent>
                 </Select>
@@ -115,12 +115,12 @@ export function EditCategoryDialog({ isOpen, onClose, onUpdate, category }) {
                   </SelectTrigger>
                   <SelectContent>
                     {colorOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectProduct key={option.value} value={option.value}>
                         <div className="flex items-center gap-2">
                           <div className={`w-4 h-4 rounded ${option.class}`} />
                           {option.label}
                         </div>
-                      </SelectItem>
+                      </SelectProduct>
                     ))}
                   </SelectContent>
                 </Select>

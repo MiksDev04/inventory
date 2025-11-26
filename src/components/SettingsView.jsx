@@ -8,12 +8,11 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
+import { Toast } from './Toast';
 
 export function SettingsView() {
   const [profile, setProfile] = useState({
     username: '',
-    firstName: "",
-    lastName: "",
     fullName: '',
     email: "",
     role: '',
@@ -21,7 +20,6 @@ export function SettingsView() {
     createdAt: null,
     updatedAt: null
   });
-  const [schemaMode, setSchemaMode] = useState('split'); // 'split' or 'full'
 
   const [notifications, setNotifications] = useState({
     lowStock: true,
@@ -40,7 +38,7 @@ export function SettingsView() {
     currency: "PHP (₱)"
   });
 
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState({ message: '', type: 'success' });
   const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
   const [confirmPasswordOpen, setConfirmPasswordOpen] = useState(false);
   // separate saving states so updating password doesn't block profile save UI
@@ -50,24 +48,44 @@ export function SettingsView() {
   const [loadError, setLoadError] = useState('');
   const mountedRef = useRef(true);
   const [errors, setErrors] = useState({});
+  const profileLoadedRef = useRef(false);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
 
   const fetchProfile = async () => {
+    // Don't fetch if already loaded
+    if (profileLoadedRef.current) return;
+    
     try {
       setLoadError('');
       const p = await (await import('../lib/api')).getProfile();
+      // console.log('Fetched profile data:', p);
       if (!mountedRef.current) return;
-      // Adapt to DB schema: either full_name or split first/last
-      if (p.full_name !== undefined) {
-        setSchemaMode('full');
-        setProfile(prev => ({ ...prev, username: p.username || '', fullName: p.full_name || '', email: p.email || '', role: p.role || '', isActive: !!p.isActive, createdAt: p.createdAt || null, updatedAt: p.updatedAt || null }));
-      } else {
-        setSchemaMode('split');
-        setProfile(prev => ({ ...prev, username: p.username || '', firstName: p.firstName || '', lastName: p.lastName || '', email: p.email || '', role: p.role || '', isActive: !!p.isActive, createdAt: p.createdAt || null, updatedAt: p.updatedAt || null }));
+      
+      if (!p) {
+        setLoadError('No user profile found. Please make sure you are logged in.');
+        return;
       }
+      
+      const profileData = {
+        username: p.username || '',
+        fullName: p.fullName || p.full_name || '',
+        email: p.email || '',
+        role: p.role || '',
+        isActive: !!p.is_active || !!p.isActive,
+        createdAt: p.createdAt || p.created_at || null,
+        updatedAt: p.updatedAt || p.updated_at || null
+      };
+      
+      // console.log('Setting profile state to:', profileData);
+      setProfile(profileData);
+      profileLoadedRef.current = true;
     } catch (e) {
       console.error('Failed to load profile', e);
       if (!mountedRef.current) return;
-      setLoadError('Failed to load profile from server. Make sure backend is running and DB is initialized (run: node backend/src/scripts/dbSetup.js).');
+      setLoadError('Failed to load profile. Make sure Firestore is configured correctly.');
     }
   };
 
@@ -79,16 +97,11 @@ export function SettingsView() {
 
   function validateProfile() {
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  // no phone field in this schema
     const newErrors = {};
-    if (schemaMode === 'split') {
-      if (!profile.firstName) newErrors.firstName = 'First name is required';
-      if (!profile.lastName) newErrors.lastName = 'Last name is required';
-      if (!profile.username) newErrors.username = 'Username is required';
-      else if (profile.username.length < 3) newErrors.username = 'Username must be at least 3 characters';
-    } else {
-      if (!profile.fullName) newErrors.fullName = 'Full name is required';
-    }
+    
+    if (!profile.fullName) newErrors.fullName = 'Full name is required';
+    if (!profile.username) newErrors.username = 'Username is required';
+    else if (profile.username.length < 3) newErrors.username = 'Username must be at least 3 characters';
     if (!profile.email) newErrors.email = 'Email is required';
     else if (!emailRe.test(profile.email)) newErrors.email = 'Please enter a valid email address';
 
@@ -100,33 +113,34 @@ export function SettingsView() {
     setSavingProfile(true);
     try {
       const api = await import('../lib/api');
-      let payload;
-      if (schemaMode === 'split') {
-        payload = { username: profile.username, firstName: profile.firstName, lastName: profile.lastName, email: profile.email };
-      } else {
-        payload = { username: profile.username, full_name: profile.fullName, email: profile.email };
-      }
+      const payload = { 
+        username: profile.username, 
+        full_name: profile.fullName, 
+        email: profile.email 
+      };
+      
       const updated = await api.updateProfile(payload);
-      // update local state from server response to reflect DB
-      if (updated.full_name !== undefined) {
-        setSchemaMode('full');
-        setProfile(prev => ({ ...prev, username: updated.username || prev.username, fullName: updated.full_name || prev.fullName, email: updated.email || prev.email, role: updated.role || prev.role, isActive: !!updated.isActive, createdAt: updated.createdAt || prev.createdAt, updatedAt: updated.updatedAt || prev.updatedAt }));
-        // notify other parts of the app (e.g., sidebar) that profile changed
-  try { window.dispatchEvent(new CustomEvent('profile:updated', { detail: updated })); } catch { /* ignore in non-browser tests */ }
-      } else {
-        setSchemaMode('split');
-        setProfile(prev => ({ ...prev, username: updated.username || prev.username, firstName: updated.firstName || prev.firstName, lastName: updated.lastName || prev.lastName, email: updated.email || prev.email, role: updated.role || prev.role, isActive: !!updated.isActive, createdAt: updated.createdAt || prev.createdAt, updatedAt: updated.updatedAt || prev.updatedAt }));
-  try { window.dispatchEvent(new CustomEvent('profile:updated', { detail: updated })); } catch { /* ignore in non-browser tests */ }
-      }
-      setMessage("Profile updated successfully!");
-      setTimeout(() => setMessage(""), 3000);
+      
+      setProfile({
+        username: updated.username || profile.username,
+        fullName: updated.fullName || updated.full_name || profile.fullName,
+        email: updated.email || profile.email,
+        role: updated.role || profile.role,
+        isActive: !!updated.is_active || !!updated.isActive,
+        createdAt: updated.createdAt || updated.created_at || profile.createdAt,
+        updatedAt: updated.updatedAt || updated.updated_at || profile.updatedAt
+      });
+      
+      try { 
+        window.dispatchEvent(new CustomEvent('profile:updated', { detail: updated })); 
+      } catch { /* ignore */ }
+      
+      showToast('Profile updated successfully!', 'success');
     } catch (e) {
       console.error('Failed to save profile', e);
-      // surface server validation messages (e.g., username_taken)
       const serverMsg = e?.response?.data?.error || e?.message || 'Failed to save profile';
-      if (serverMsg === 'username_taken') setMessage('That username is already taken.');
-      else setMessage(serverMsg);
-      setTimeout(() => setMessage(""), 3000);
+      if (serverMsg === 'username_taken') showToast('That username is already taken.', 'error');
+      else showToast(serverMsg, 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -136,18 +150,15 @@ export function SettingsView() {
   const handlePasswordUpdate = async () => {
     // Re-validate before performing the change
     if (!security.currentPassword || !security.newPassword || !security.confirmPassword) {
-      setMessage("Please fill in all password fields!");
-      setTimeout(() => setMessage(""), 3000);
+      showToast('Please fill in all password fields!', 'warning');
       return false;
     }
     if (security.newPassword !== security.confirmPassword) {
-      setMessage("New passwords do not match!");
-      setTimeout(() => setMessage(""), 3000);
+      showToast('New passwords do not match!', 'warning');
       return false;
     }
     if (security.newPassword.length < 6) {
-      setMessage("Password must be at least 6 characters!");
-      setTimeout(() => setMessage(""), 3000);
+      showToast('Password must be at least 6 characters!', 'warning');
       return false;
     }
 
@@ -158,51 +169,39 @@ export function SettingsView() {
       if (res && res.success) {
         // clear the password inputs as a visible indication
         setSecurity({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        setMessage("Password updated successfully!");
+        showToast('Password updated successfully!', 'success');
         // show a small success dialog as additional confirmation
         setPasswordChangedOpen(true);
         return true;
       } else {
-        setMessage('Failed to update password');
+        showToast('Failed to update password', 'error');
         return false;
       }
     } catch (e) {
       console.error('Password update failed', e);
       const serverMsg = e?.response?.data?.error || e?.message || 'Failed to update password';
-      if (serverMsg === 'incorrect_current_password') setMessage('Current password is incorrect');
-      else if (serverMsg === 'new_password_too_short') setMessage('New password must be at least 6 characters');
-      else setMessage(serverMsg);
+      if (serverMsg === 'incorrect_current_password') showToast('Current password is incorrect', 'error');
+      else if (serverMsg === 'new_password_too_short') showToast('New password must be at least 6 characters', 'error');
+      else showToast(serverMsg, 'error');
       return false;
     } finally {
       setSavingPassword(false);
-      setTimeout(() => setMessage(""), 3000);
     }
   };
 
   // Note: confirmation modal is opened immediately; validation happens on confirm
 
   const handleSystemSave = () => {
-    localStorage.setItem("systemSettings", JSON.stringify(system));
-    setMessage("System settings updated successfully!");
-    setTimeout(() => setMessage(""), 3000);
+    localStorage.setProduct("systemSettings", JSON.stringify(system));
+    showToast('System settings updated successfully!', 'success');
   };
 
   return (
     <div className="p-8">
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
       <div className="mb-8">
         <h1 className="text-gray-900 dark:text-white">Settings</h1>
         <p className="text-gray-600 dark:text-gray-400">Manage your application settings and preferences</p>
-      </div>
-
-      {/* top drop-down animated notification */}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-4 flex justify-center z-50">
-        <div className={`${message ? 'transform translate-y-0' : '-translate-y-20'} transition-transform duration-300 pointer-events-auto`}> 
-          {message && (
-            <div className="mb-0 p-4 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-lg shadow-md">
-              {message}
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="space-y-6">
@@ -226,38 +225,15 @@ export function SettingsView() {
                 />
                 {errors.username && <p className="text-sm text-red-600 mt-1">{errors.username}</p>}
               </div>
-              {schemaMode === 'split' ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input 
-                      id="firstName" 
-                      value={profile.firstName}
-                      onChange={(e) => { setProfile({ ...profile, firstName: e.target.value }); setErrors(prev => ({ ...prev, firstName: undefined })); }}
-                    />
-                    {errors.firstName && <p className="text-sm text-red-600 mt-1">{errors.firstName}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input 
-                      id="lastName" 
-                      value={profile.lastName}
-                      onChange={(e) => { setProfile({ ...profile, lastName: e.target.value }); setErrors(prev => ({ ...prev, lastName: undefined })); }}
-                    />
-                    {errors.lastName && <p className="text-sm text-red-600 mt-1">{errors.lastName}</p>}
-                  </div>
-                </>
-              ) : (
-                <div className="col-span-1 md:col-span-1 space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={profile.fullName}
-                    onChange={(e) => { setProfile({ ...profile, fullName: e.target.value }); setErrors(prev => ({ ...prev, fullName: undefined })); }}
-                  />
-                  {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={profile.fullName}
+                  onChange={(e) => { setProfile({ ...profile, fullName: e.target.value }); setErrors(prev => ({ ...prev, fullName: undefined })); }}
+                />
+                {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -273,8 +249,7 @@ export function SettingsView() {
             <Button disabled={savingProfile} onClick={() => {
               const v = validateProfile();
               if (!v.ok) {
-                setMessage(v.msg);
-                setTimeout(() => setMessage(''), 3000);
+                showToast(v.msg || 'Please fix validation errors', 'warning');
                 return;
               }
               setConfirmSaveOpen(true);
@@ -323,14 +298,14 @@ export function SettingsView() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-gray-900 dark:text-gray-100">Low Stock Alerts</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when items are running low</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when products are running low</p>
               </div>
               <Switch 
                 checked={notifications.lowStock}
                 onCheckedChange={(checked) => {
                   const newNotifications = { ...notifications, lowStock: checked };
                   setNotifications(newNotifications);
-                  localStorage.setItem("notificationSettings", JSON.stringify(newNotifications));
+                  localStorage.setProduct("notificationSettings", JSON.stringify(newNotifications));
                 }}
               />
             </div>
@@ -338,14 +313,14 @@ export function SettingsView() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-gray-900 dark:text-gray-100">Out of Stock Alerts</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when items are out of stock</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Get notified when products are out of stock</p>
               </div>
               <Switch 
                 checked={notifications.outOfStock}
                 onCheckedChange={(checked) => {
                   const newNotifications = { ...notifications, outOfStock: checked };
                   setNotifications(newNotifications);
-                  localStorage.setItem("notificationSettings", JSON.stringify(newNotifications));
+                  localStorage.setProduct("notificationSettings", JSON.stringify(newNotifications));
                 }}
               />
             </div>

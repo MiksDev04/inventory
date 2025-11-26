@@ -15,7 +15,10 @@ export default function NotificationModal({ isOpen, onClose }) {
   }, [isOpen]);
 
   const loadNotifications = async () => {
-    setLoading(true);
+    // Only show loading if we don't have any data yet
+    if (notifications.length === 0) {
+      setLoading(true);
+    }
     try {
       const data = await getNotifications();
       setNotifications(data);
@@ -134,12 +137,12 @@ export default function NotificationModal({ isOpen, onClose }) {
                     !notification.is_read ? "border-l-4" : ""
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex products-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                       {getIcon(notification.type)}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex products-start justify-between gap-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {notification.title}
                         </h3>

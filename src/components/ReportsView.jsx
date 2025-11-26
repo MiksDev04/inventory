@@ -2,62 +2,98 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { getReports, createReport as apiCreateReport, deleteReport as apiDeleteReport } from "../lib/api";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { Toast } from './Toast';
+import api from '../lib/api';
 
-export function ReportsView() {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onFetchReports }) {
+  const [reports, setReports] = useState(initialReports);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(null);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(20);
-  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(initialPagination.page);
+  const [perPage, setPerPage] = useState(initialPagination.perPage);
+  const [totalCount, setTotalCount] = useState(initialPagination.total);
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  // Update local state when props change
+  useEffect(() => {
+    setReports(initialReports);
+    setPage(initialPagination.page);
+    setPerPage(initialPagination.perPage);
+    setTotalCount(initialPagination.total);
+  }, [initialReports, initialPagination]);
+
+  const fetchReports = async () => {
+    try {
+      // Only show loading spinner if we have no data yet
+      if (reports.length === 0) {
+        setLoading(true);
+      }
+      
+      if (onFetchReports) {
+        await onFetchReports(page, perPage);
+      } else {
+        const res = await api.getReports({ page, perPage });
+        setReports(res.data || []);
+        setTotalCount(res.total || 0);
+      }
+    } catch (e) {
+      setError('Failed to load reports');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const fetchPage = async () => {
-      try {
-        setLoading(true);
-        const res = await getReports({ page, perPage });
-        if (!mounted) return;
-        // res = { data, total, page, perPage }
-        setReports(res.data);
-        setTotalCount(res.total || 0);
-      } catch (e) {
-        if (mounted) setError('Failed to load reports');
-        console.error(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchPage();
-    return () => { mounted = false };
+    fetchReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage]);
 
   const handleGenerateReport = async (period = 'weekly') => {
     try {
-      // simple automatic date ranges: last 7 days or last 30 days
       const end = new Date();
       const start = new Date();
-      if (period === 'weekly') start.setDate(end.getDate() - 7);
-      else start.setDate(end.getDate() - 30);
+      if (period === 'weekly') {
+        start.setDate(end.getDate() - 7);
+      } else {
+        start.setMonth(end.getMonth() - 1);
+      }
 
       const format = (d) => d.toISOString().split('T')[0];
 
-      await apiCreateReport({ period, startDate: format(start), endDate: format(end) });
-      // refresh page
-      const res = await getReports({ page, perPage });
-      setReports(res.data);
-      setTotalCount(res.total || 0);
+      await api.createReport({ period, startDate: format(start), endDate: format(end) });
+      fetchReports(); // Refresh reports after generating a new one
+      showToast(`${period.charAt(0).toUpperCase() + period.slice(1)} report generated successfully!`, 'success');
     } catch (e) {
       setError('Failed to generate report');
+      showToast('Failed to generate report', 'error');
+      console.error(e);
+    }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!deleting) return;
+    try {
+      await api.deleteReport(deleting.id);
+      fetchReports(); // Refresh reports
+      setDeleting(null);
+      showToast('Report deleted successfully!', 'success');
+    } catch (e) {
+      setError('Failed to delete report');
+      showToast('Failed to delete report', 'error');
       console.error(e);
     }
   };
 
   return (
     <div className="p-8">
+      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl">Reports</h1>
@@ -87,7 +123,7 @@ export function ReportsView() {
                     <TableHead>Period</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>End</TableHead>
-                    <TableHead>Total Items</TableHead>
+                    <TableHead>Total Products</TableHead>
                     <TableHead>Total Value</TableHead>
                     <TableHead>Low Stock</TableHead>
                     <TableHead>Out of Stock</TableHead>
@@ -101,7 +137,7 @@ export function ReportsView() {
                       <TableCell>{r.period}</TableCell>
                       <TableCell>{r.startDate}</TableCell>
                       <TableCell>{r.endDate}</TableCell>
-                      <TableCell>{r.totalItems}</TableCell>
+                      <TableCell>{r.totalProducts}</TableCell>
                       <TableCell>₱{parseFloat(r.totalValue).toLocaleString()}</TableCell>
                       <TableCell>{r.lowStockCount}</TableCell>
                       <TableCell>{r.outOfStockCount}</TableCell>
@@ -144,24 +180,10 @@ export function ReportsView() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleting(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => {
-              try {
-                await apiDeleteReport(deleting.id);
-                // refresh page after delete
-                const res = await getReports({ page, perPage });
-                setReports(res.data);
-                setTotalCount(res.total || 0);
-                setDeleting(null);
-              } catch (e) {
-                setError('Failed to delete report');
-                console.error(e);
-              }
-            }}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteReport}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
-
-export default ReportsView;

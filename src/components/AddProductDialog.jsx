@@ -1,20 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 
-export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = [] }) {
+export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers = [] }) {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
-  category: "",
+    category: "",
     quantity: 0,
     minQuantity: 0,
     price: 0,
-  supplier: "",
+    supplier: "",
     status: "in-stock"
   });
+
+  // Auto-generate SKU when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const generatedSku = `SKU-${Date.now()}`;
+      setFormData(prev => ({ ...prev, sku: generatedSku }));
+    }
+  }, [isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,7 +62,7 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 border border-gray-200 dark:border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add New Item</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add New Product</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -69,25 +77,25 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Item Name *
+                  Product Name *
                 </label>
                 <Input
                   required
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="Enter item name"
+                  placeholder="Enter product name"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  SKU *
+                  SKU (Auto-generated)
                 </label>
                 <Input
-                  required
                   value={formData.sku}
-                  onChange={(e) => handleChange("sku", e.target.value)}
-                  placeholder="Enter SKU"
+                  disabled
+                  className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-gray-100"
+                  readOnly
                 />
               </div>
             </div>
@@ -103,11 +111,11 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = 
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
+                      <SelectProduct key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectProduct>
                     ))}
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectProduct value="Other">Other</SelectProduct>
                   </SelectContent>
                 </Select>
               </div>
@@ -122,9 +130,9 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = 
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
+                      <SelectProduct key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectProduct>
                     ))}
                   </SelectContent>
                 </Select>
@@ -181,7 +189,7 @@ export function AddItemDialog({ isOpen, onClose, onAdd, categories, suppliers = 
               Cancel
             </Button>
             <Button type="submit">
-              Add Item
+              Add Product
             </Button>
           </div>
         </form>

@@ -2,43 +2,41 @@ import { useState } from "react";
 import { Package, Plus, Search, Filter, Download } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent } from "./ui/card";
 import { InventoryTable } from "./InventoryTable";
-import { AddItemDialog } from "./AddItemDialog";
+import { AddProductDialog } from "./AddProductDialog";
 
-export function InventoryView({ items, onAddItem, onUpdateItem, onDeleteItem }) {
+export function InventoryView({ products, onAddProduct, onUpdateProduct, onDeleteProduct, categories = [], suppliers = [] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredItems = items.filter(item => {
+  const filteredProducts = (products || []).filter(product => {
     const matchesSearch = 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+      (product.name && product.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.supplier && product.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const categories = Array.from(new Set(items.map(item => item.category)));
-
-  const handleAddItem = (newItem) => {
-    onAddItem(newItem);
+  const handleAddProduct = (newProduct) => {
+    onAddProduct(newProduct);
     setIsAddDialogOpen(false);
   };
 
   return (
-    <div>
+    <div className="p-8">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="dark:text-white">Inventory Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">View and manage all inventory items</p>
+            <p className="text-gray-600 dark:text-gray-400">View and manage all inventory products</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2">
@@ -47,7 +45,7 @@ export function InventoryView({ items, onAddItem, onUpdateItem, onDeleteItem }) 
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
               <Plus className="w-4 h-4" />
-              Add Item
+              Add Product
             </Button>
           </div>
         </div>
@@ -73,9 +71,9 @@ export function InventoryView({ items, onAddItem, onUpdateItem, onDeleteItem }) 
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectProduct value="all">All Categories</SelectProduct>
                 {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                  <SelectProduct key={category.id} value={category.name}>{category.name}</SelectProduct>
                 ))}
               </SelectContent>
             </Select>
@@ -85,10 +83,10 @@ export function InventoryView({ items, onAddItem, onUpdateItem, onDeleteItem }) 
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="in-stock">In Stock</SelectItem>
-                <SelectItem value="low-stock">Low Stock</SelectItem>
-                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                <SelectProduct value="all">All Status</SelectProduct>
+                <SelectProduct value="in-stock">In Stock</SelectProduct>
+                <SelectProduct value="low-stock">Low Stock</SelectProduct>
+                <SelectProduct value="out-of-stock">Out of Stock</SelectProduct>
               </SelectContent>
             </Select>
           </div>
@@ -97,17 +95,20 @@ export function InventoryView({ items, onAddItem, onUpdateItem, onDeleteItem }) 
 
       {/* Inventory Table */}
       <InventoryTable 
-        items={filteredItems} 
-        onUpdate={onUpdateItem}
-        onDelete={onDeleteItem}
+        products={filteredProducts} 
+        onUpdate={onUpdateProduct}
+        onDelete={onDeleteProduct}
+        categories={categories}
+        suppliers={suppliers}
       />
 
-      {/* Add Item Dialog */}
-      <AddItemDialog
+      {/* Add Product Dialog */}
+      <AddProductDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddItem}
+        onAdd={handleAddProduct}
         categories={categories}
+        suppliers={suppliers}
       />
     </div>
   );

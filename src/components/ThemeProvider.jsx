@@ -5,9 +5,13 @@ const ThemeContext = createContext(undefined);
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     // Check localStorage first, then system preference
-    const stored = localStorage.getItem("inventory-theme");
-    if (stored) return stored;
-    
+    try {
+      const stored = localStorage.getItem("inventory-theme");
+      if (stored) return stored;
+    } catch (e) {
+      // ignore access errors
+    }
+
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       return "dark";
     }
@@ -18,7 +22,11 @@ export function ThemeProvider({ children }) {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
     root.classList.add(theme);
-    localStorage.setItem("inventory-theme", theme);
+    try {
+      localStorage.setItem("inventory-theme", theme);
+    } catch (e) {
+      // ignore
+    }
   }, [theme]);
 
   const toggleTheme = () => {

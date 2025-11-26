@@ -8,89 +8,61 @@ import { AddCategoryDialog } from "./AddCategoryDialog";
 import { EditCategoryDialog } from "./EditCategoryDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-import { getCategories, getItems, createCategory as apiCreateCategory, updateCategory as apiUpdateCategory, deleteCategory as apiDeleteCategory } from "../lib/api";
-
-export function CategoriesView({ items }) {
-  const [categories, setCategories] = useState([]);
-  const [remoteItems, setRemoteItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export function CategoriesView({ products, categories: initialCategories, onAddCategory, onUpdateCategory, onDeleteCategory }) {
+  const [categories, setCategories] = useState(initialCategories || []);
+  const [loading, setLoading] = useState(!initialCategories);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [deletingCategory, setDeletingCategory] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [cats, its] = await Promise.all([getCategories(), getItems()]);
-        if (!mounted) return;
-        setCategories(cats);
-        setRemoteItems(its);
-      } catch (e) {
-        if (mounted) setError("Failed to load categories");
-        console.error(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false };
-  }, []);
+    setCategories(initialCategories || []);
+    if (initialCategories) {
+      setLoading(false);
+    }
+  }, [initialCategories]);
 
-  const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCategories = (categories || []).filter(category => 
+    (category && category.name && category.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (category && category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const getCategoryItemCount = (categoryName) => {
-    const list = (items && items.length ? items : remoteItems);
-    return list.filter(item => item.category === categoryName).length;
+  const getCategoryProductCount = (categoryName) => {
+    if (!products || !Array.isArray(products)) return 0;
+    return products.filter(product => product.category === categoryName).length;
   };
 
-  const handleAddCategory = async (newCategory) => {
+  const handleAdd = async (newCategory) => {
     try {
-      const created = await apiCreateCategory(newCategory);
-      setCategories(prev => [...prev, created]);
+      await onAddCategory(newCategory);
+      setIsAddDialogOpen(false);
     } catch (e) {
       setError('Failed to add category');
       console.error(e);
     }
   };
 
-  const handleUpdateCategory = async (updatedCategory) => {
+  const handleUpdate = async (updatedCategory) => {
     try {
-      const saved = await apiUpdateCategory(updatedCategory.id, updatedCategory);
-      setCategories(prev => prev.map(cat => cat.id === saved.id ? saved : cat));
-      setSelectedCategory(null);
+      await onUpdateCategory(editingCategory.id, updatedCategory, editingCategory.name);
+      setEditingCategory(null);
     } catch (e) {
       setError('Failed to update category');
       console.error(e);
     }
   };
 
-  const handleDeleteCategory = async () => {
-    if (!selectedCategory) return;
+  const handleDelete = async () => {
+    if (!deletingCategory) return;
     try {
-      await apiDeleteCategory(selectedCategory.id);
-      setCategories(prev => prev.filter(cat => cat.id !== selectedCategory.id));
-      setSelectedCategory(null);
-      setIsDeleteDialogOpen(false);
+      await onDeleteCategory(deletingCategory.id);
+      setDeletingCategory(null);
     } catch (e) {
       setError('Failed to delete category');
       console.error(e);
     }
-  };
-
-  const openEditDialog = (category) => {
-    setSelectedCategory(category);
-    setIsEditDialogOpen(true);
-  };
-
-  const openDeleteDialog = (category) => {
-    setSelectedCategory(category);
-    setIsDeleteDialogOpen(true);
   };
 
   const getColorClass = (color) => {
@@ -146,30 +118,30 @@ export function CategoriesView({ items }) {
             <FolderOpen className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">{categories.length}</div>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">{(categories || []).length}</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Active categories</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Total Items</CardTitle>
+            <CardTitle className="text-sm">Total Products</CardTitle>
             <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">{(items && items.length ? items : remoteItems).length}</div>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">{(products || []).length}</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all categories</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Average Items</CardTitle>
+            <CardTitle className="text-sm">Average Products</CardTitle>
             <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-gray-900 dark:text-gray-100">
-              {categories.length > 0 ? Math.round(((items && items.length ? items : remoteItems).length) / categories.length) : 0}
+              {(categories || []).length > 0 ? Math.round(((products || []).length) / (categories || []).length) : 0}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Per category</p>
           </CardContent>
@@ -200,19 +172,19 @@ export function CategoriesView({ items }) {
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {filteredCategories.map((category) => {
-          const itemCount = getCategoryItemCount(category.name);
+          const productCount = getCategoryProductCount(category.name);
           return (
             <Card key={category.id} className={`border-2 ${getBorderColorClass(category.color)} hover:shadow-lg transition-shadow`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-lg ${getColorClass(category.color)} flex items-center justify-center text-2xl shrink-0`}>
+                    <div className={`w-12 h-12 rounded-lg ${getColorClass(category.color)} flex items-center justify-center text-2xl shrink-0 text-white`}>
                       {category.icon}
                     </div>
                     <div>
                       <CardTitle className="text-lg mb-1">{category.name}</CardTitle>
                       <Badge variant="secondary" className="text-xs">
-                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                        {productCount} {productCount === 1 ? 'product' : 'products'}
                       </Badge>
                     </div>
                   </div>
@@ -223,14 +195,14 @@ export function CategoriesView({ items }) {
                   {category.description}
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                  <span>Created: {new Date(category.createdDate).toLocaleDateString()}</span>
+                  <span>Created: {new Date(category.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="flex-1 gap-2"
-                    onClick={() => openEditDialog(category)}
+                    onClick={() => setEditingCategory(category)}
                   >
                     <Pencil className="w-3 h-3" />
                     Edit
@@ -239,7 +211,7 @@ export function CategoriesView({ items }) {
                     variant="outline" 
                     size="sm" 
                     className="flex-1 gap-2 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
-                    onClick={() => openDeleteDialog(category)}
+                    onClick={() => setDeletingCategory(category)}
                   >
                     <Trash2 className="w-3 h-3" />
                     Delete
@@ -252,7 +224,7 @@ export function CategoriesView({ items }) {
       </div>
 
       {/* Empty State */}
-      {filteredCategories.length === 0 && (
+      {!loading && filteredCategories.length === 0 && (
         <Card className="p-12">
           <div className="text-center">
             <FolderOpen className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
@@ -274,43 +246,44 @@ export function CategoriesView({ items }) {
       <AddCategoryDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddCategory}
+        onAdd={handleAdd}
       />
 
       {/* Edit Category Dialog */}
-      <EditCategoryDialog
-        isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false);
-          setSelectedCategory(null);
-        }}
-        onUpdate={handleUpdateCategory}
-        category={selectedCategory}
-      />
+      {editingCategory && (
+        <EditCategoryDialog
+          isOpen={!!editingCategory}
+          onClose={() => setEditingCategory(null)}
+          onUpdate={handleUpdate}
+          category={editingCategory}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the category "{selectedCategory?.name}". 
-              This action cannot be undone.
-              {selectedCategory && getCategoryItemCount(selectedCategory.name) > 0 && (
-                <span className="block mt-2 text-orange-600 dark:text-orange-500">
-                  Warning: This category has {getCategoryItemCount(selectedCategory.name)} item(s) associated with it.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setSelectedCategory(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCategory} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deletingCategory && (
+        <AlertDialog open={!!deletingCategory} onOpenChange={() => setDeletingCategory(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the category "{deletingCategory?.name}". 
+                This action cannot be undone.
+                {getCategoryProductCount(deletingCategory.name) > 0 && (
+                  <span className="block mt-2 text-orange-600 dark:text-orange-500">
+                    Warning: This category has {getCategoryProductCount(deletingCategory.name)} product(s) associated with it.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

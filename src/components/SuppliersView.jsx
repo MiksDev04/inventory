@@ -8,100 +8,72 @@ import { AddSupplierDialog } from "./AddSupplierDialog";
 import { EditSupplierDialog } from "./EditSupplierDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-import { getSuppliers, getItems, createSupplier as apiCreateSupplier, updateSupplier as apiUpdateSupplier, deleteSupplier as apiDeleteSupplier } from "../lib/api";
-
-export function SuppliersView({ items }) {
-  const [suppliers, setSuppliers] = useState([]);
-  const [remoteItems, setRemoteItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupplier, onUpdateSupplier, onDeleteSupplier }) {
+  const [suppliers, setSuppliers] = useState(initialSuppliers || []);
+  const [loading, setLoading] = useState(!initialSuppliers);
   const [error, setError] = useState("");
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [sups, its] = await Promise.all([getSuppliers(), getItems()]);
-        if (!mounted) return;
-        setSuppliers(sups);
-        setRemoteItems(its);
-      } catch (e) {
-        if (mounted) setError("Failed to load suppliers");
-        console.error(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false };
-  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const [deletingSupplier, setDeletingSupplier] = useState(null);
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.location.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    setSuppliers(initialSuppliers || []);
+    if (initialSuppliers) {
+      setLoading(false);
+    }
+  }, [initialSuppliers]);
+
+  const filteredSuppliers = (suppliers || []).filter(supplier =>
+    (supplier.name && supplier.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (supplier.location && supplier.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getSupplierStats = (supplierName) => {
-  const list = (items && items.length ? items : remoteItems);
-  const supplierItems = list.filter(item => item.supplier === supplierName);
-    const itemCount = supplierItems.length;
-    const totalValue = supplierItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-    const categories = Array.from(new Set(supplierItems.map(item => item.category)));
-    return { itemCount, totalValue, categories };
+    const supplierProducts = (products || []).filter(product => product.supplier === supplierName);
+    const productCount = supplierProducts.length;
+    const totalValue = supplierProducts.reduce((sum, product) => sum + (product.quantity * product.price), 0);
+    const categories = Array.from(new Set(supplierProducts.map(product => product.category)));
+    return { productCount, totalValue, categories };
   };
 
-  const handleAddSupplier = async (newSupplier) => {
+  const handleAdd = async (newSupplier) => {
     try {
-      const created = await apiCreateSupplier(newSupplier);
-      setSuppliers(prev => [...prev, created]);
+      await onAddSupplier(newSupplier);
+      setIsAddDialogOpen(false);
     } catch (e) {
       setError('Failed to add supplier');
       console.error(e);
     }
   };
 
-  const handleUpdateSupplier = async (updatedSupplier) => {
+  const handleUpdate = async (updatedSupplier) => {
     try {
-      const saved = await apiUpdateSupplier(updatedSupplier.id, updatedSupplier);
-      setSuppliers(prev => prev.map(sup => sup.id === saved.id ? saved : sup));
-      setSelectedSupplier(null);
+      await onUpdateSupplier(editingSupplier.id, updatedSupplier, editingSupplier.name);
+      setEditingSupplier(null);
     } catch (e) {
       setError('Failed to update supplier');
       console.error(e);
     }
   };
 
-  const handleDeleteSupplier = async () => {
-    if (!selectedSupplier) return;
+  const handleDelete = async () => {
+    if (!deletingSupplier) return;
     try {
-      await apiDeleteSupplier(selectedSupplier.id);
-      setSuppliers(prev => prev.filter(sup => sup.id !== selectedSupplier.id));
-      setSelectedSupplier(null);
-      setIsDeleteDialogOpen(false);
+      await onDeleteSupplier(deletingSupplier.id);
+      setDeletingSupplier(null);
     } catch (e) {
       setError('Failed to delete supplier');
       console.error(e);
     }
   };
 
-  const openEditDialog = (supplier) => {
-    setSelectedSupplier(supplier);
-    setIsEditDialogOpen(true);
-  };
-
-  const openDeleteDialog = (supplier) => {
-    setSelectedSupplier(supplier);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const activeSuppliers = suppliers.filter(s => s.status === "active");
-  const totalProducts = suppliers.reduce((sum, supplier) => sum + getSupplierStats(supplier.name).itemCount, 0);
+  const activeSuppliers = (suppliers || []).filter(s => s.status === "active");
+  const totalProducts = (products || []).length;
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
+    <div className="p-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
@@ -136,13 +108,13 @@ export function SuppliersView({ items }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalProducts}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Products supplied</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">From all suppliers</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm text-gray-900 dark:text-gray-100">Average Items/Supplier</CardTitle>
+            <CardTitle className="text-sm text-gray-900 dark:text-gray-100">Average Products/Supplier</CardTitle>
             <Users className="w-4 h-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -191,7 +163,7 @@ export function SuppliersView({ items }) {
                     <div>
                       <CardTitle className="text-base text-gray-900 dark:text-white">{supplier.name}</CardTitle>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {stats.itemCount} product{stats.itemCount !== 1 ? 's' : ''} supplied
+                        {stats.productCount} product{stats.productCount !== 1 ? 's' : ''} supplied
                       </p>
                     </div>
                   </div>
@@ -244,7 +216,7 @@ export function SuppliersView({ items }) {
                       variant="outline"
                       size="sm"
                       className="flex-1 gap-2"
-                      onClick={() => openEditDialog(supplier)}
+                      onClick={() => setEditingSupplier(supplier)}
                     >
                       <Pencil className="w-3 h-3" />
                       Edit
@@ -253,7 +225,7 @@ export function SuppliersView({ items }) {
                       variant="outline"
                       size="sm"
                       className="flex-1 gap-2 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
-                      onClick={() => openDeleteDialog(supplier)}
+                      onClick={() => setDeletingSupplier(supplier)}
                     >
                       <Trash2 className="w-3 h-3" />
                       Delete
@@ -267,7 +239,7 @@ export function SuppliersView({ items }) {
       </div>
 
       {/* Empty State */}
-      {filteredSuppliers.length === 0 && (
+      {filteredSuppliers.length === 0 && !loading && (
         <Card className="p-12">
           <div className="text-center">
             <Users className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
@@ -289,43 +261,44 @@ export function SuppliersView({ items }) {
       <AddSupplierDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddSupplier}
+        onAdd={handleAdd}
       />
 
       {/* Edit Supplier Dialog */}
-      <EditSupplierDialog
-        isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false);
-          setSelectedSupplier(null);
-        }}
-        onUpdate={handleUpdateSupplier}
-        supplier={selectedSupplier}
-      />
+      {editingSupplier && (
+        <EditSupplierDialog
+          isOpen={!!editingSupplier}
+          onClose={() => setEditingSupplier(null)}
+          onUpdate={handleUpdate}
+          supplier={editingSupplier}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-gray-900 dark:text-white">Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
-              This will permanently delete the supplier "{selectedSupplier?.name}".
-              This action cannot be undone.
-              {selectedSupplier && getSupplierStats(selectedSupplier.name).itemCount > 0 && (
-                <span className="block mt-2 text-orange-600 dark:text-orange-500">
-                  Warning: This supplier has {getSupplierStats(selectedSupplier.name).itemCount} product(s) associated with it.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setSelectedSupplier(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSupplier} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deletingSupplier && (
+        <AlertDialog open={!!deletingSupplier} onOpenChange={() => setDeletingSupplier(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-gray-900 dark:text-white">Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                This will permanently delete the supplier "{deletingSupplier?.name}".
+                This action cannot be undone.
+                {getSupplierStats(deletingSupplier.name).productCount > 0 && (
+                  <span className="block mt-2 text-orange-600 dark:text-orange-500">
+                    Warning: This supplier has {getSupplierStats(deletingSupplier.name).productCount} product(s) associated with it.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
