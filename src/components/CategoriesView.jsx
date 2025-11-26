@@ -100,7 +100,7 @@ export function CategoriesView({ products, categories: initialCategories, onAddC
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <FolderOpen className="w-8 h-8 text-blue-600 dark:text-blue-500" />
-            <h1>Categories</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Categories</h1>
           </div>
           <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
