@@ -1,4 +1,5 @@
 import * as fb from './firebaseClient.js';
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from './cloudinary.js';
 import { saveImage, getImage } from './imageStore.js';
 
 export async function getProducts(opts) {
@@ -65,7 +66,7 @@ export async function createProduct(payload) {
   return created;
 }
 
-// Helper function to upload images to Firebase Storage
+// Helper function to upload images to Cloudinary (free tier)
 async function uploadProductImages(files, sku) {
   const uploadedUrls = [];
   
@@ -73,16 +74,16 @@ async function uploadProductImages(files, sku) {
     const file = files[i];
     
     try {
-      // Upload to Firebase Storage
-      const downloadURL = await fb.uploadImageToStorage(file, sku, i);
+      // Upload to Cloudinary
+      const downloadURL = await uploadImageToCloudinary(file);
       uploadedUrls.push(downloadURL);
-      console.log(`✓ Image uploaded to Firebase Storage: ${downloadURL}`);
+      console.log(`✓ Image uploaded to Cloudinary: ${downloadURL}`);
     } catch (e) {
       console.error(`✗ Failed to upload ${file.name}:`, e);
     }
   }
   
-  console.log(`Uploaded ${uploadedUrls.length} images to Firebase Storage`);
+  console.log(`Uploaded ${uploadedUrls.length} images to Cloudinary`);
   return uploadedUrls;
 }
 
@@ -132,10 +133,10 @@ export async function updateProduct(id, payload) {
   for (const imageUrl of removedImages) {
     if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
       try {
-        await fb.deleteImageFromStorage(imageUrl);
-        console.log('✓ Deleted removed image from Storage:', imageUrl);
+        await deleteImageFromCloudinary(imageUrl);
+        console.log('✓ Image unlinked from product:', imageUrl);
       } catch (e) {
-        console.error('Failed to delete image:', e);
+        console.error('Failed to process image removal:', e);
       }
     }
   }
@@ -215,15 +216,15 @@ export async function deleteProduct(id) {
   // Fetch product before deletion to log and delete images
   const existing = await fb.getProduct(id);
   
-  // Delete images from Firebase Storage
+  // Delete images from Cloudinary
   if (existing?.images && Array.isArray(existing.images)) {
     for (const imageUrl of existing.images) {
       if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
         try {
-          await fb.deleteImageFromStorage(imageUrl);
-          console.log('✓ Deleted image from Storage:', imageUrl);
+          await deleteImageFromCloudinary(imageUrl);
+          console.log('✓ Image unlinked from product:', imageUrl);
         } catch (e) {
-          console.error('Failed to delete image:', e);
+          console.error('Failed to process image removal:', e);
         }
       }
     }
