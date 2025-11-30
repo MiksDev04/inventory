@@ -15,6 +15,7 @@ import { InventoryView } from './components/InventoryView';
 import { Toast } from './components/Toast';
 import TransactionsView from './components/TransactionsView';
 import api from './lib/api';
+import * as fb from './lib/firebaseClient';
 
 function App() {
   const [currentView, setCurrentView] = useState("dashboard");
@@ -50,9 +51,36 @@ function App() {
   // Fetch initial data on mount for dashboard
   useEffect(() => {
     if (loggedIn) {
-      fetchProducts();
-      fetchCategories();
-      fetchSuppliers();
+      // Set up real-time listeners
+      const unsubscribeProducts = fb.subscribeToProducts((products) => {
+        setProducts(products);
+        // Check for low/out of stock notifications
+        if (products && products.length > 0) {
+          api.checkAllProductsForNotifications().catch(e => 
+            console.error('Failed to check products for notifications', e)
+          );
+        }
+      });
+
+      const unsubscribeCategories = fb.subscribeToCategories((categories) => {
+        setCategories(categories);
+      });
+
+      const unsubscribeSuppliers = fb.subscribeToSuppliers((suppliers) => {
+        setSuppliers(suppliers);
+      });
+
+      const unsubscribeTransactions = fb.subscribeToTransactions((transactions) => {
+        setTransactions(transactions);
+      });
+
+      // Cleanup listeners on logout or unmount
+      return () => {
+        unsubscribeProducts();
+        unsubscribeCategories();
+        unsubscribeSuppliers();
+        unsubscribeTransactions();
+      };
     }
   }, [loggedIn]);
 
@@ -66,63 +94,16 @@ function App() {
     }
   }, [reportsPagination.page, reportsPagination.perPage]);
 
-  const fetchTransactions = useCallback(async (page = transactionsPagination.page, perPage = transactionsPagination.perPage) => {
-    try {
-      const res = await api.listTransactions({ page, perPage });
-      if (Array.isArray(res)) {
-        setTransactions(res);
-        setTransactionsPagination({ page, perPage, total: res.length });
-      } else {
-        setTransactions(res.data || []);
-        setTransactionsPagination({ page: res.page || page, perPage: res.perPage || perPage, total: res.total || 0 });
-      }
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-    }
-  }, [transactionsPagination.page, transactionsPagination.perPage]);
-
-  // Fetch data when switching views (only if not already loaded)
+  // Fetch reports when switching to reports view
   useEffect(() => {
-    if (['inventory', 'analytics'].includes(currentView) && products.length === 0) {
-      fetchProducts();
-    }
-    if (['inventory', 'categories', 'products', 'analytics'].includes(currentView) && categories.length === 0) {
-      fetchCategories();
-    }
-    if (['inventory', 'suppliers', 'products', 'analytics'].includes(currentView) && suppliers.length === 0) {
-      fetchSuppliers();
-    }
     if (currentView === 'reports' && reports.length === 0) {
       fetchReports();
     }
-    if (currentView === 'transactions' && transactions.length === 0) {
-      fetchTransactions();
-    }
-  }, [currentView, products.length, categories.length, suppliers.length, reports.length, transactions.length, fetchReports, fetchTransactions]);
-
-  const fetchProducts = async () => {
-    try {
-      const fetchedProducts = await api.listProducts();
-      setProducts(fetchedProducts);
-      
-      // Check for products with low/out of stock and create notifications if needed
-      if (fetchedProducts && fetchedProducts.length > 0) {
-        try {
-          await api.checkAllProductsForNotifications();
-        } catch (e) {
-          console.error('Failed to check products for notifications', e);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    }
-  };
+  }, [currentView, reports.length, fetchReports]);
 
   const handleAddProduct = async (productData) => {
     try {
       const newProduct = await api.createProduct(productData);
-      fetchProducts(); // Refetch products after adding
-      fetchTransactions(); // Refresh transaction log
       showToast('Product added successfully!', 'success');
       
       // Check if the newly added product needs a stock notification
@@ -142,8 +123,6 @@ function App() {
   const handleUpdateProduct = async (productId, productData) => {
     try {
       await api.updateProduct(productId, productData);
-      fetchProducts(); // Refetch products after updating
-      fetchTransactions(); // Refresh transaction log
       showToast('Product updated successfully!', 'success');
       
       // Check only this specific product for stock notification
@@ -161,8 +140,6 @@ function App() {
   const handleDeleteProduct = async (productId) => {
     try {
       await api.deleteProduct(productId);
-      fetchProducts(); // Refetch products after deleting
-      fetchTransactions(); // Refresh transaction log
       showToast('Product deleted successfully!', 'success');
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -171,19 +148,9 @@ function App() {
   };
 
   // --- Categories ---
-  const fetchCategories = async () => {
-    try {
-      const fetchedCategories = await api.listCategories();
-      setCategories(fetchedCategories);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
-
   const handleAddCategory = async (categoryData) => {
     try {
       await api.createCategory(categoryData);
-      fetchCategories();
       showToast('Category added successfully!', 'success');
     } catch (error) {
       console.error("Error adding category:", error);
@@ -201,10 +168,8 @@ function App() {
         for (const product of productsToUpdate) {
           await api.updateProduct(product.id, { ...product, category: categoryData.name });
         }
-        fetchProducts();
       }
       
-      fetchCategories();
       showToast('Category updated successfully!', 'success');
     } catch (error)
       {
@@ -216,7 +181,6 @@ function App() {
   const handleDeleteCategory = async (categoryId) => {
     try {
       await api.deleteCategory(categoryId);
-      fetchCategories();
       showToast('Category deleted successfully!', 'success');
     } catch (error) {
       console.error("Error deleting category:", error);
@@ -225,19 +189,9 @@ function App() {
   };
 
     // --- Suppliers ---
-  const fetchSuppliers = async () => {
-    try {
-      const fetchedSuppliers = await api.listSuppliers();
-      setSuppliers(fetchedSuppliers);
-    } catch (error) {
-      console.error("Error fetching suppliers:", error);
-    }
-  };
-
   const handleAddSupplier = async (supplierData) => {
     try {
       await api.createSupplier(supplierData);
-      fetchSuppliers();
       showToast('Supplier added successfully!', 'success');
     } catch (error) {
       console.error("Error adding supplier:", error);
@@ -255,10 +209,8 @@ function App() {
         for (const product of productsToUpdate) {
           await api.updateProduct(product.id, { ...product, supplier: supplierData.name });
         }
-        fetchProducts();
       }
       
-      fetchSuppliers();
       showToast('Supplier updated successfully!', 'success');
     } catch (error) {
       console.error("Error updating supplier:", error);
@@ -269,7 +221,6 @@ function App() {
   const handleDeleteSupplier = async (supplierId) => {
     try {
       await api.deleteSupplier(supplierId);
-      fetchSuppliers();
       showToast('Supplier deleted successfully!', 'success');
     } catch (error) {
       console.error("Error deleting supplier:", error);

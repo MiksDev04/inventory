@@ -13,7 +13,8 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
 import {
   getStorage,
@@ -90,6 +91,16 @@ export async function listProducts({ limit = 1000 } = {}) {
   return arr;
 }
 
+// Real-time listener for products
+export function subscribeToProducts(callback) {
+  const q = query(collection(db, 'products'), orderBy('createdAt'));
+  return onSnapshot(q, (snapshot) => {
+    const products = [];
+    snapshot.forEach(d => products.push(docData(d)));
+    callback(products);
+  });
+}
+
 export async function getProduct(id) {
   const d = await getDoc(doc(db, 'products', String(id)));
   if (!d.exists()) return null;
@@ -146,6 +157,16 @@ export async function listCategories() {
   return res;
 }
 
+// Real-time listener for categories
+export function subscribeToCategories(callback) {
+  const q = query(collection(db, 'categories'), orderBy('createdAt'));
+  return onSnapshot(q, (snapshot) => {
+    const categories = [];
+    snapshot.forEach(d => categories.push(docData(d)));
+    callback(categories);
+  });
+}
+
 export async function findCategoryByName(name) {
   const q = query(collection(db, 'categories'), where('name', '==', name));
   const snap = await getDocs(q);
@@ -178,6 +199,16 @@ export async function listSuppliers() {
   const res = [];
   snap.forEach(d => res.push(docData(d)));
   return res;
+}
+
+// Real-time listener for suppliers
+export function subscribeToSuppliers(callback) {
+  const q = query(collection(db, 'suppliers'), orderBy('createdAt'));
+  return onSnapshot(q, (snapshot) => {
+    const suppliers = [];
+    snapshot.forEach(d => suppliers.push(docData(d)));
+    callback(suppliers);
+  });
 }
 
 export async function findSupplierByName(name) {
@@ -397,6 +428,7 @@ export default {
   createProduct,
   updateProduct,
   deleteProduct,
+  subscribeToProducts,
   // storage
   uploadImageToStorage,
   deleteImageFromStorage,
@@ -406,12 +438,14 @@ export default {
   createCategory,
   updateCategory,
   deleteCategory,
+  subscribeToCategories,
   // suppliers
   listSuppliers,
   findSupplierByName,
   createSupplier,
   updateSupplier,
   deleteSupplier,
+  subscribeToSuppliers,
   // users
   listUsers,
   getUserByUsername,
@@ -435,6 +469,7 @@ export default {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  subscribeToTransactions,
   // auth
   verifyLogin,
   // helper
@@ -458,6 +493,21 @@ export async function listTransactions() {
   const res = [];
   snap.forEach(d => res.push(docData(d)));
   return res;
+}
+
+// Real-time listener for transactions
+export function subscribeToTransactions(callback) {
+  let q;
+  try {
+    q = query(collection(db, 'transactions'), orderBy('createdAt', 'desc'));
+  } catch (_e) {
+    q = query(collection(db, 'transactions'), orderBy('created_at', 'desc'));
+  }
+  return onSnapshot(q, (snapshot) => {
+    const transactions = [];
+    snapshot.forEach(d => transactions.push(docData(d)));
+    callback(transactions);
+  });
 }
 
 export async function getTransaction(id) {
