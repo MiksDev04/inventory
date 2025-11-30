@@ -421,6 +421,30 @@ export async function deleteReport(id) {
   await deleteDoc(doc(db, 'inventory_reports', String(id)));
 }
 
+// Real-time listener for reports
+export function subscribeToReports(callback, includeArchived = false) {
+  let q;
+  try {
+    q = query(collection(db, 'inventory_reports'), orderBy('createdAt', 'desc'));
+  } catch (_e) {
+    q = query(collection(db, 'inventory_reports'), orderBy('created_at', 'desc'));
+  }
+  
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const res = [];
+    snapshot.forEach(d => {
+      const data = docData(d);
+      // Filter archived unless explicitly requested
+      if (includeArchived || !data.archived) {
+        res.push(data);
+      }
+    });
+    callback(res);
+  });
+  
+  return unsubscribe;
+}
+
 export default {
   // products
   listProducts,
@@ -463,6 +487,7 @@ export default {
   createReport,
   archiveReport,
   deleteReport,
+  subscribeToReports,
   // transactions
   listTransactions,
   getTransaction,

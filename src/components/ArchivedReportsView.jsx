@@ -10,7 +10,6 @@ import * as fb from '../lib/firebaseClient';
 
 export default function ArchivedReportsView({ onNavigate }) {
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [restoring, setRestoring] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -20,24 +19,15 @@ export default function ArchivedReportsView({ onNavigate }) {
     setToast({ message, type });
   };
 
-  const fetchArchivedReports = async () => {
-    try {
-      setLoading(true);
-      const allReports = await api.getReports({ includeArchived: true });
-      // Filter only archived reports
-      const archived = (Array.isArray(allReports) ? allReports : allReports.data || [])
-        .filter(r => r.archived === true);
-      setReports(archived);
-    } catch (e) {
-      setError('Failed to load archived reports');
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Set up real-time listener for archived reports
   useEffect(() => {
-    fetchArchivedReports();
+    const unsubscribe = fb.subscribeToReports((allReports) => {
+      // Filter only archived reports
+      const archived = allReports.filter(r => r.archived === true);
+      setReports(archived);
+    }, true); // includeArchived = true
+
+    return () => unsubscribe();
   }, []);
 
   const handleRestoreReport = async () => {
@@ -48,7 +38,6 @@ export default function ArchivedReportsView({ onNavigate }) {
         archived: false,
         archivedAt: null
       });
-      fetchArchivedReports(); // Refresh reports
       setRestoring(null);
       showToast('Report restored successfully!', 'success');
     } catch (e) {
@@ -62,7 +51,6 @@ export default function ArchivedReportsView({ onNavigate }) {
     if (!deleting) return;
     try {
       await api.deleteReport(deleting.id);
-      fetchArchivedReports(); // Refresh reports
       setDeleting(null);
       showToast('Report permanently deleted!', 'success');
     } catch (e) {
@@ -93,9 +81,7 @@ export default function ArchivedReportsView({ onNavigate }) {
           <CardTitle>Archived Reports ({reports.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div>Loading...</div>
-          ) : reports.length === 0 ? (
+          {reports.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No archived reports found
             </div>

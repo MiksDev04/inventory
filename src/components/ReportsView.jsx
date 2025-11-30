@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Toast } from './Toast';
 import api from '../lib/api';
 
-export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onFetchReports, onNavigate }) {
+export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onNavigate }) {
   const [reports, setReports] = useState(initialReports);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,37 +24,8 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
   // Update local state when props change
   useEffect(() => {
     setReports(initialReports);
-    setPage(initialPagination.page);
-    setPerPage(initialPagination.perPage);
     setTotalCount(initialPagination.total);
   }, [initialReports, initialPagination]);
-
-  const fetchReports = async () => {
-    try {
-      // Only show loading spinner if we have no data yet
-      if (reports.length === 0) {
-        setLoading(true);
-      }
-      
-      if (onFetchReports) {
-        await onFetchReports(page, perPage);
-      } else {
-        const res = await api.getReports({ page, perPage });
-        setReports(res.data || []);
-        setTotalCount(res.total || 0);
-      }
-    } catch (e) {
-      setError('Failed to load reports');
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, perPage]);
 
   const handleGenerateReport = async (period = 'weekly') => {
     try {
@@ -69,7 +40,6 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
       const format = (d) => d.toISOString().split('T')[0];
 
       await api.createReport({ period, startDate: format(start), endDate: format(end) });
-      fetchReports(); // Refresh reports after generating a new one
       showToast(`${period.charAt(0).toUpperCase() + period.slice(1)} report generated successfully!`, 'success');
     } catch (e) {
       setError('Failed to generate report');
@@ -82,7 +52,6 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
     if (!archiving) return;
     try {
       await api.archiveReport(archiving.id);
-      fetchReports(); // Refresh reports
       setArchiving(null);
       showToast('Report archived successfully!', 'success');
     } catch (e) {

@@ -74,32 +74,21 @@ function App() {
         setTransactions(transactions);
       });
 
+      const unsubscribeReports = fb.subscribeToReports((reports) => {
+        setReports(reports);
+        setReportsPagination(prev => ({ ...prev, total: reports.length }));
+      });
+
       // Cleanup listeners on logout or unmount
       return () => {
         unsubscribeProducts();
         unsubscribeCategories();
         unsubscribeSuppliers();
         unsubscribeTransactions();
+        unsubscribeReports();
       };
     }
   }, [loggedIn]);
-
-  const fetchReports = useCallback(async (page = reportsPagination.page, perPage = reportsPagination.perPage) => {
-    try {
-      const res = await api.getReports({ page, perPage });
-      setReports(res.data || []);
-      setReportsPagination({ page, perPage, total: res.total || 0 });
-    } catch (error) {
-      console.error("Error fetching reports:", error);
-    }
-  }, [reportsPagination.page, reportsPagination.perPage]);
-
-  // Fetch reports when switching to reports view
-  useEffect(() => {
-    if (currentView === 'reports' && reports.length === 0) {
-      fetchReports();
-    }
-  }, [currentView, reports.length, fetchReports]);
 
   const handleAddProduct = async (productData) => {
     try {
@@ -294,7 +283,6 @@ function App() {
             <ReportsView 
               reports={reports}
               pagination={reportsPagination}
-              onFetchReports={fetchReports}
               onNavigate={setCurrentView}
             />
           )}
