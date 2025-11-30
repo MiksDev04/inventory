@@ -197,11 +197,11 @@ export function SettingsView() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
-      <div className="mb-8">
-        <h1 className="text-gray-900 dark:text-white">Settings</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage your application settings and preferences</p>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Settings</h1>
+        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your application settings and preferences</p>
       </div>
 
       <div className="space-y-6">
@@ -215,7 +215,7 @@ export function SettingsView() {
             <CardDescription>Update your profile information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 relative">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -245,7 +245,7 @@ export function SettingsView() {
               />
               {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
             </div>
-            {/* phone field removed — schema does not include phone in your user_accounts table */}
+            {/* phone field removed — schema does not include phone in your inventory_users table */}
             <Button disabled={savingProfile} onClick={() => {
               const v = validateProfile();
               if (!v.ok) {

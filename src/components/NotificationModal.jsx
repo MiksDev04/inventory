@@ -33,7 +33,7 @@ export default function NotificationModal({ isOpen, onClose }) {
     try {
       await markAsRead(id);
       setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
     } catch (error) {
       console.error("Failed to mark as read:", error);
@@ -44,7 +44,7 @@ export default function NotificationModal({ isOpen, onClose }) {
     try {
       await markAllAsRead();
       setNotifications(prev =>
-        prev.map(n => ({ ...n, is_read: true }))
+        prev.map(n => ({ ...n, isRead: true }))
       );
     } catch (error) {
       console.error("Failed to mark all as read:", error);
@@ -99,7 +99,7 @@ export default function NotificationModal({ isOpen, onClose }) {
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h2>
           <div className="flex items-center gap-2">
-            {notifications.some(n => !n.is_read) && (
+            {notifications.some(n => !n.isRead) && (
               <Button
                 onClick={handleMarkAllAsRead}
                 variant="outline"
@@ -134,7 +134,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                 <div
                   key={notification.id}
                   className={`p-4 rounded-lg border ${getTypeColor(notification.type)} ${
-                    !notification.is_read ? "border-l-4" : ""
+                    !notification.isRead ? "border-l-4" : ""
                   }`}
                 >
                   <div className="flex products-start gap-3">
@@ -147,7 +147,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                           {notification.title}
                         </h3>
                         <div className="flex items-center gap-1">
-                          {!notification.is_read && (
+                          {!notification.isRead && (
                             <button
                               onClick={() => handleMarkAsRead(notification.id)}
                               className="p-1 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
@@ -169,11 +169,11 @@ export default function NotificationModal({ isOpen, onClose }) {
                         {notification.message}
                       </p>
                       <div className="flex items-center gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{new Date(notification.created_at).toLocaleString()}</span>
-                        {notification.item_sku && (
+                        <span>{new Date(notification.createdAt).toLocaleString()}</span>
+                        {notification.itemSku && (
                           <>
                             <span>•</span>
-                            <span>SKU: {notification.item_sku}</span>
+                            <span>SKU: {notification.itemSku}</span>
                           </>
                         )}
                       </div>

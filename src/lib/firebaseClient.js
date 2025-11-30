@@ -8,6 +8,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   where,
   orderBy,
@@ -34,23 +35,19 @@ function docData(d) {
   const raw = d.data ? d.data() : d;
   const converted = {};
   for (const [k, v] of Object.entries(raw || {})) {
+    // Skip old snake_case timestamp fields only (keep other snake_case for backward compatibility)
+    if (k === 'created_at' || k === 'updated_at') continue;
+    
     if (v && typeof v.toDate === 'function') converted[k] = v.toDate();
     else converted[k] = v;
   }
-  // Normalize fields
-  if (converted.created_at && !converted.createdAt) {
-    converted.createdAt = converted.created_at;
-    converted.createdDate = converted.createdDate || converted.created_at;
-  }
-  if (converted.updated_at && !converted.updatedAt) converted.updatedAt = converted.updated_at;
-  if (converted.full_name && !converted.fullName) converted.fullName = converted.full_name;
-  if (converted.is_active !== undefined && converted.isActive === undefined) converted.isActive = converted.is_active;
+  
   return { id: d.id, ...converted };
 }
 
 // --- Products ---
 export async function listProducts({ limit = 1000 } = {}) {
-  const q = query(collection(db, 'products'), orderBy('created_at'));
+  const q = query(collection(db, 'products'), orderBy('createdAt'));
   const snap = await getDocs(q);
   const arr = [];
   snap.forEach(d => arr.push(docData(d)));
@@ -61,18 +58,45 @@ export async function listProducts({ limit = 1000 } = {}) {
 export async function getProduct(id) {
   const d = await getDoc(doc(db, 'products', String(id)));
   if (!d.exists()) return null;
-  return docData(d);
+  const data = docData(d);
+  console.log('[Firestore] getProduct:', id, 'Data:', data);
+  console.log('[Firestore] images field:', data.images, 'Type:', typeof data.images, 'IsArray:', Array.isArray(data.images));
+  return data;
 }
 
 export async function createProduct(payload) {
-  const p = { ...payload, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+  console.log('[Firestore] createProduct payload:', payload);
+  console.log('[Firestore] payload.images:', payload.images, 'Type:', typeof payload.images, 'IsArray:', Array.isArray(payload.images));
+  
+  const p = { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+  console.log('[Firestore] Saving to Firestore:', p);
+  
   const ref = await addDoc(collection(db, 'products'), p);
+  console.log('[Firestore] Product created with ID:', ref.id);
   return ref.id;
 }
 
 export async function updateProduct(id, payload) {
+  console.log('[Firestore] updateProduct id:', id, 'payload:', payload);
+  console.log('[Firestore] payload.images:', payload.images, 'Type:', typeof payload.images, 'IsArray:', Array.isArray(payload.images));
+  
+  const updatePayload = { 
+    ...payload, 
+    updatedAt: serverTimestamp(),
+    created_at: deleteField(),  // Remove old field
+    updated_at: deleteField()   // Remove old field
+  };
+  console.log('[Firestore] Full update payload:', updatePayload);
+  console.log('[Firestore] Update payload images field:', updatePayload.images);
+  
   const ref = doc(db, 'products', String(id));
-  await updateDoc(ref, { ...payload, updated_at: serverTimestamp() });
+  await updateDoc(ref, updatePayload);
+  console.log('[Firestore] Product updated successfully');
+  
+  // Verify what was saved
+  const verifyDoc = await getDoc(ref);
+  const savedData = verifyDoc.data();
+  console.log('[Firestore] Verification - saved images:', savedData.images);
 }
 
 export async function deleteProduct(id) {
@@ -81,7 +105,7 @@ export async function deleteProduct(id) {
 
 // --- Categories ---
 export async function listCategories() {
-  const snap = await getDocs(query(collection(db, 'categories'), orderBy('created_at')));
+  const snap = await getDocs(query(collection(db, 'categories'), orderBy('createdAt')));
   const res = [];
   snap.forEach(d => res.push(docData(d)));
   return res;
@@ -95,13 +119,18 @@ export async function findCategoryByName(name) {
 }
 
 export async function createCategory(payload) {
-  const p = { ...payload, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+  const p = { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
   const r = await addDoc(collection(db, 'categories'), p);
   return r.id;
 }
 
 export async function updateCategory(id, payload) {
-  await updateDoc(doc(db, 'categories', String(id)), { ...payload, updated_at: serverTimestamp() });
+  await updateDoc(doc(db, 'categories', String(id)), { 
+    ...payload, 
+    updatedAt: serverTimestamp(),
+    created_at: deleteField(),  // Remove old field
+    updated_at: deleteField()   // Remove old field
+  });
 }
 
 export async function deleteCategory(id) {
@@ -110,7 +139,7 @@ export async function deleteCategory(id) {
 
 // --- Suppliers ---
 export async function listSuppliers() {
-  const snap = await getDocs(query(collection(db, 'suppliers'), orderBy('created_at')));
+  const snap = await getDocs(query(collection(db, 'suppliers'), orderBy('createdAt')));
   const res = [];
   snap.forEach(d => res.push(docData(d)));
   return res;
@@ -124,13 +153,18 @@ export async function findSupplierByName(name) {
 }
 
 export async function createSupplier(payload) {
-  const p = { ...payload, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+  const p = { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
   const r = await addDoc(collection(db, 'suppliers'), p);
   return r.id;
 }
 
 export async function updateSupplier(id, payload) {
-  await updateDoc(doc(db, 'suppliers', String(id)), { ...payload, updated_at: serverTimestamp() });
+  await updateDoc(doc(db, 'suppliers', String(id)), { 
+    ...payload, 
+    updatedAt: serverTimestamp(),
+    created_at: deleteField(),  // Remove old field
+    updated_at: deleteField()   // Remove old field
+  });
 }
 
 export async function deleteSupplier(id) {
@@ -139,21 +173,21 @@ export async function deleteSupplier(id) {
 
 // --- Users (auth) ---
 export async function listUsers() {
-  const snap = await getDocs(collection(db, 'user_accounts'));
+  const snap = await getDocs(collection(db, 'inventory_users'));
   const users = [];
   snap.forEach(d => users.push(docData(d)));
   return users;
 }
 
 export async function getUserByUsername(username) {
-  const q = query(collection(db, 'user_accounts'), where('username', '==', username));
+  const q = query(collection(db, 'inventory_users'), where('username', '==', username));
   const snap = await getDocs(q);
   const first = snap.docs[0];
   return first ? docData(first) : null;
 }
 
 export async function getUserById(id) {
-  const d = await getDoc(doc(db, 'user_accounts', String(id)));
+  const d = await getDoc(doc(db, 'inventory_users', String(id)));
   return d.exists() ? docData(d) : null;
 }
 
@@ -178,7 +212,7 @@ export async function createUser(payload) {
   }
   p.created_at = serverTimestamp();
   p.updated_at = serverTimestamp();
-  const r = await addDoc(collection(db, 'user_accounts'), p);
+  const r = await addDoc(collection(db, 'inventory_users'), p);
   return r.id;
 }
 
@@ -188,7 +222,7 @@ export async function updateUser(id, payload) {
     p.password_hash = await hashPassword(p.password);
     delete p.password;
   }
-  await updateDoc(doc(db, 'user_accounts', String(id)), { ...p, updated_at: serverTimestamp() });
+  await updateDoc(doc(db, 'inventory_users', String(id)), { ...p, updated_at: serverTimestamp() });
 }
 
 export async function verifyLogin(username, password) {
@@ -207,29 +241,76 @@ export async function verifyLogin(username, password) {
 
 // --- Notifications ---
 export async function listNotificationsForUser(userId, { limit = 100 } = {}) {
-  const q = query(collection(db, 'notifications'), where('user_id', '==', userId), orderBy('created_at', 'desc'));
-  const snap = await getDocs(q);
+  // Try new field first
+  let q = query(collection(db, 'notifications'), where('userId', '==', userId));
+  let snap = await getDocs(q);
+  
+  // If no results, try old field for backward compatibility
+  if (snap.empty) {
+    q = query(collection(db, 'notifications'), where('user_id', '==', userId));
+    snap = await getDocs(q);
+  }
+  
   const res = [];
   snap.forEach(d => res.push(docData(d)));
+  
+  // Sort by createdAt in memory since we might have mixed field names
+  res.sort((a, b) => {
+    const aDate = a.createdAt || a.created_at || new Date(0);
+    const bDate = b.createdAt || b.created_at || new Date(0);
+    return bDate - aDate;
+  });
+  
   return res.slice(0, limit);
 }
 
 export async function createNotification(payload) {
-  const p = { ...payload, created_at: serverTimestamp(), is_read: !!payload.is_read };
+  const p = { 
+    userId: payload.user_id || payload.userId,
+    type: payload.type,
+    title: payload.title,
+    message: payload.message,
+    productId: payload.product_id || payload.productId,
+    itemSku: payload.item_sku || payload.itemSku,
+    createdAt: serverTimestamp(), 
+    isRead: !!payload.isRead || !!payload.is_read 
+  };
   const r = await addDoc(collection(db, 'notifications'), p);
   return r.id;
 }
 
 export async function markNotificationRead(id) {
-  await updateDoc(doc(db, 'notifications', String(id)), { is_read: true, read_at: serverTimestamp() });
+  await updateDoc(doc(db, 'notifications', String(id)), { 
+    isRead: true, 
+    readAt: serverTimestamp(),
+    is_read: deleteField(),  // Remove old field
+    read_at: deleteField()   // Remove old field
+  });
 }
 
 export async function markAllNotificationsRead(userId) {
-  const q = query(collection(db, 'notifications'), where('user_id', '==', userId), where('is_read', '==', false));
-  const snap = await getDocs(q);
-  const batch = writeBatch(db);
-  snap.forEach(d => batch.update(d.ref, { is_read: true, read_at: serverTimestamp() }));
-  await batch.commit();
+  // Get all unread notifications for this user (supporting both field names)
+  let q = query(collection(db, 'notifications'), where('userId', '==', userId), where('isRead', '==', false));
+  let snap = await getDocs(q);
+  
+  // Try old field name if no results
+  if (snap.empty) {
+    q = query(collection(db, 'notifications'), where('user_id', '==', userId), where('is_read', '==', false));
+    snap = await getDocs(q);
+  }
+  
+  if (!snap.empty) {
+    const batch = writeBatch(db);
+    snap.forEach(d => batch.update(d.ref, { 
+      isRead: true, 
+      readAt: serverTimestamp(),
+      is_read: deleteField(),  // Remove old field
+      read_at: deleteField(),   // Remove old field
+      user_id: deleteField(),   // Remove old field
+      userId: userId            // Ensure new field is set
+    }));
+    await batch.commit();
+  }
 }
 
 export async function deleteNotification(id) {
@@ -237,21 +318,41 @@ export async function deleteNotification(id) {
 }
 
 // --- Reports ---
-export async function listReports() {
-  const snap = await getDocs(query(collection(db, 'reports'), orderBy('created_at', 'desc')));
+export async function listReports(includeArchived = false) {
+  // Try new field first, fall back to old for compatibility
+  let snap;
+  try {
+    snap = await getDocs(query(collection(db, 'inventory_reports'), orderBy('createdAt', 'desc')));
+  } catch (_e) {
+    // If createdAt index doesn't exist, try created_at
+    snap = await getDocs(query(collection(db, 'inventory_reports'), orderBy('created_at', 'desc')));
+  }
   const res = [];
-  snap.forEach(d => res.push(docData(d)));
+  snap.forEach(d => {
+    const data = docData(d);
+    // Filter archived unless explicitly requested
+    if (includeArchived || !data.archived) {
+      res.push(data);
+    }
+  });
   return res;
 }
 
 export async function createReport(payload) {
-  const p = { ...payload, created_at: serverTimestamp() };
-  const r = await addDoc(collection(db, 'reports'), p);
+  const p = { ...payload, createdAt: serverTimestamp(), archived: false };
+  const r = await addDoc(collection(db, 'inventory_reports'), p);
   return r.id;
 }
 
+export async function archiveReport(id) {
+  await updateDoc(doc(db, 'inventory_reports', String(id)), { 
+    archived: true,
+    archivedAt: serverTimestamp()
+  });
+}
+
 export async function deleteReport(id) {
-  await deleteDoc(doc(db, 'reports', String(id)));
+  await deleteDoc(doc(db, 'inventory_reports', String(id)));
 }
 
 export default {
@@ -288,10 +389,132 @@ export default {
   // reports
   listReports,
   createReport,
+  archiveReport,
   deleteReport,
+  // transactions
+  listTransactions,
+  getTransaction,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
   // auth
   verifyLogin,
   // helper
   hashPassword,
   comparePassword
 };
+
+// Export Firestore utilities for direct use
+export { db, doc, updateDoc };
+
+// --- Transactions ---
+export async function listTransactions() {
+  // Try new field first, fall back to old for compatibility
+  let snap;
+  try {
+    snap = await getDocs(query(collection(db, 'transactions'), orderBy('createdAt', 'desc')));
+  } catch (_e) {
+    // If createdAt index doesn't exist, try created_at
+    snap = await getDocs(query(collection(db, 'transactions'), orderBy('created_at', 'desc')));
+  }
+  const res = [];
+  snap.forEach(d => res.push(docData(d)));
+  return res;
+}
+
+export async function getTransaction(id) {
+  const d = await getDoc(doc(db, 'transactions', String(id)));
+  return d.exists() ? docData(d) : null;
+}
+
+export async function createTransaction(payload) {
+  const p = { ...payload, createdAt: serverTimestamp() };
+  const r = await addDoc(collection(db, 'transactions'), p);
+  return r.id;
+}
+
+export async function updateTransaction(id, payload) {
+  await updateDoc(doc(db, 'transactions', String(id)), { ...payload });
+}
+
+export async function deleteTransaction(id) {
+  await deleteDoc(doc(db, 'transactions', String(id)));
+}
+
+// Clean up old snake_case timestamp fields
+export async function cleanupOldTimestampFields() {
+  console.log('Starting cleanup of old timestamp fields...');
+  const collections = ['products', 'categories', 'suppliers', 'notifications', 'inventory_reports', 'transactions'];
+  let totalUpdated = 0;
+  
+  for (const collectionName of collections) {
+    console.log(`Processing ${collectionName}...`);
+    const snap = await getDocs(collection(db, collectionName));
+    
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      const updates = {};
+      
+      // Remove old snake_case timestamp fields
+      if (data.created_at !== undefined) {
+        updates.created_at = deleteField();
+      }
+      if (data.updated_at !== undefined) {
+        updates.updated_at = deleteField();
+      }
+      
+      // Remove old notification-specific snake_case fields
+      if (collectionName === 'notifications') {
+        if (data.user_id !== undefined) {
+          updates.user_id = deleteField();
+        }
+        if (data.is_read !== undefined) {
+          updates.is_read = deleteField();
+        }
+        if (data.read_at !== undefined) {
+          updates.read_at = deleteField();
+        }
+        if (data.product_id !== undefined) {
+          updates.product_id = deleteField();
+        }
+        if (data.item_sku !== undefined) {
+          updates.item_sku = deleteField();
+        }
+      }
+      
+      // Remove old transaction-specific snake_case fields
+      if (collectionName === 'transactions') {
+        if (data.product_id !== undefined) {
+          updates.product_id = deleteField();
+        }
+        if (data.item_sku !== undefined) {
+          updates.item_sku = deleteField();
+        }
+        if (data.product_name !== undefined) {
+          updates.product_name = deleteField();
+        }
+        if (data.quantity_diff !== undefined) {
+          updates.quantity_diff = deleteField();
+        }
+        if (data.price_diff !== undefined) {
+          updates.price_diff = deleteField();
+        }
+        if (data.change_fields !== undefined) {
+          updates.change_fields = deleteField();
+        }
+      }
+      
+      // Only update if there are fields to remove
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(doc(db, collectionName, docSnap.id), updates);
+        totalUpdated++;
+        console.log(`  Cleaned ${docSnap.id}`);
+      }
+    }
+  }
+  
+  console.log(`Cleanup complete! Updated ${totalUpdated} documents.`);
+  return totalUpdated;
+}
+
+// (removed duplicate default export)

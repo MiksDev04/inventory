@@ -126,30 +126,31 @@ export function InventoryDashboard() {
   // computed when rendering; no need for a separate variable
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-6 lg:p-8 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-3">
           <div className="flex items-center gap-3">
-            <Package className="w-8 h-8 text-blue-600" />
-            <h1>Inventory Management</h1>
+            <Package className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+            <h1 className="text-xl md:text-2xl lg:text-3xl">Inventory Management</h1>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 text-sm">
               <Download className="w-4 h-4" />
-              Export
+              <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 text-sm">
               <Plus className="w-4 h-4" />
-              Add Product
+              <span className="hidden sm:inline">Add Product</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-400">Manage and track your inventory products</p>
+        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage and track your inventory products</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm">Total Products</CardTitle>
@@ -197,8 +198,8 @@ export function InventoryDashboard() {
 
       {/* Filters and Search */}
       <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+        <CardContent className="pt-4 md:pt-6">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -209,30 +210,32 @@ export function InventoryDashboard() {
               />
             </div>
             
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectProduct value="all">All Categories</SelectProduct>
-                {categories.map(category => (
-                  <SelectProduct key={category} value={category}>{category}</SelectProduct>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectProduct value="all">All Categories</SelectProduct>
+                  {categories.map(category => (
+                    <SelectProduct key={category} value={category}>{category}</SelectProduct>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectProduct value="all">All Status</SelectProduct>
-                <SelectProduct value="in-stock">In Stock</SelectProduct>
-                <SelectProduct value="low-stock">Low Stock</SelectProduct>
-                <SelectProduct value="out-of-stock">Out of Stock</SelectProduct>
-              </SelectContent>
-            </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectProduct value="all">All Status</SelectProduct>
+                  <SelectProduct value="in-stock">In Stock</SelectProduct>
+                  <SelectProduct value="low-stock">Low Stock</SelectProduct>
+                  <SelectProduct value="out-of-stock">Out of Stock</SelectProduct>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>

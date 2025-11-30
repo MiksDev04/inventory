@@ -62,10 +62,10 @@ export default function Dashboard({ products: initialProducts, categories: initi
   const topValueProducts = (products || []).slice().sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price)).slice(0,5);
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-[#0d1117]">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
-          <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
+    <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-[#0d1117]">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
         </div>
 
         {loading ? (
@@ -75,7 +75,7 @@ export default function Dashboard({ products: initialProducts, categories: initi
         ) : (
           <>
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm">Total Products</CardTitle>

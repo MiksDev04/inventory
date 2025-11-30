@@ -73,23 +73,23 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
   const totalProducts = (products || []).length;
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-3">
           <div className="flex items-center gap-3">
-            <Users className="w-8 h-8 text-blue-600 dark:text-blue-500" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Suppliers</h1>
+            <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600 dark:text-blue-500" />
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Suppliers</h1>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             Add Supplier
           </Button>
         </div>
-        <p className="text-gray-600 dark:text-gray-400">Manage your supplier relationships</p>
+        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your supplier relationships</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm text-gray-900 dark:text-gray-100">Total Suppliers</CardTitle>

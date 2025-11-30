@@ -58,7 +58,7 @@ export function SelectContent({ children, className = "" }) {
 
   return (
     <div className={cn(
-      "absolute z-40 mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg",
+      "absolute z-40 mt-1 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-60 overflow-y-auto",
       className
     )}>
       <div className="p-1">

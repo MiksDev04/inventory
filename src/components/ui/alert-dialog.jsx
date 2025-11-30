@@ -20,7 +20,12 @@ export function AlertDialog({ open, onOpenChange, children }) {
         />
         {/* Dialog */}
         <div className="relative">
-          {children}
+          {React.Children.map(children, child => {
+            if (React.isValidElement(child)) {
+              return React.cloneElement(child, { onOpenChange });
+            }
+            return child;
+          })}
         </div>
       </div>,
       document.body
@@ -30,7 +35,7 @@ export function AlertDialog({ open, onOpenChange, children }) {
   return null;
 }
 
-export function AlertDialogContent({ children, className = "" }) {
+export function AlertDialogContent({ children, className = "", onOpenChange }) {
   return (
     <div
       className={cn(
@@ -41,15 +46,25 @@ export function AlertDialogContent({ children, className = "" }) {
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      {children}
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, { onOpenChange });
+        }
+        return child;
+      })}
     </div>
   );
 }
 
-export function AlertDialogHeader({ children, className = "" }) {
+export function AlertDialogHeader({ children, className = "", onOpenChange }) {
   return (
     <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)}>
-      {children}
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, { onOpenChange });
+        }
+        return child;
+      })}
     </div>
   );
 }
@@ -70,10 +85,15 @@ export function AlertDialogDescription({ children, className = "" }) {
   );
 }
 
-export function AlertDialogFooter({ children, className = "" }) {
+export function AlertDialogFooter({ children, className = "", onOpenChange }) {
   return (
     <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4", className)}>
-      {children}
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, { onOpenChange });
+        }
+        return child;
+      })}
     </div>
   );
 }
@@ -92,10 +112,15 @@ export function AlertDialogAction({ children, onClick, className = "" }) {
   );
 }
 
-export function AlertDialogCancel({ children, onClick, className = "" }) {
+export function AlertDialogCancel({ children, onClick, className = "", onOpenChange }) {
+  const handleClick = (e) => {
+    onClick?.(e);
+    onOpenChange?.(false);
+  };
+  
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         "mt-2 sm:mt-0 inline-flex h-10 items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500",
         className

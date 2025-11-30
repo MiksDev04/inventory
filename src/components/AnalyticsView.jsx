@@ -1,24 +1,26 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, BarChart3, PieChart, Activity } from "lucide-react";
+import { TrendingUp, BarChart3, PieChart, Activity, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import { getReports } from "../lib/api";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
+import { Pie, Bar } from 'react-chartjs-2';
 
-export function AnalyticsView({ products: initialProducts, categories: initialCategories, suppliers: initialSuppliers }) {
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+
+export function AnalyticsView(props) {
+  const { products: initialProducts } = props || {};
   const [products, setProducts] = useState(initialProducts || []);
-  const [categories, setCategories] = useState(initialCategories || []);
-  const [suppliers, setSuppliers] = useState(initialSuppliers || []);
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(!initialProducts || !initialCategories || !initialSuppliers);
+  const [loading, setLoading] = useState(!initialProducts);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setProducts(initialProducts || []);
-    setCategories(initialCategories || []);
-    setSuppliers(initialSuppliers || []);
-    if (initialProducts && initialCategories && initialSuppliers) {
+    if (initialProducts) {
       setLoading(false);
     }
-  }, [initialProducts, initialCategories, initialSuppliers]);
+  }, [initialProducts]);
 
   useEffect(() => {
     // Fetch reports for stock turnover calculation
@@ -28,6 +30,7 @@ export function AnalyticsView({ products: initialProducts, categories: initialCa
         setReports(Array.isArray(reportsData) ? reportsData : []);
       } catch (e) {
         console.error('Failed to load reports', e);
+        setError('Failed to load reports');
       }
     })();
   }, []);
@@ -87,11 +90,199 @@ export function AnalyticsView({ products: initialProducts, categories: initialCa
 
   const stockTurnover = calculateStockTurnover();
 
+  const handleExport = () => {
+    // Prepare analytics summary CSV
+    const summaryData = [
+      ['Metric', 'Value'],
+      ['Total Products', products.length],
+      ['Total Inventory Value', `₱${totalValue.toFixed(2)}`],
+      ['Average Product Value', `₱${avgProductValue.toFixed(2)}`],
+      ['Stock Turnover Rate', stockTurnover.rate],
+      [''],
+      ['Top Categories by Value', ''],
+      ['Category', 'Value'],
+      ...topCategories.map(([cat, val]) => [cat, `₱${val.toFixed(2)}`]),
+      [''],
+      ['Top Suppliers by Value', ''],
+      ['Supplier', 'Value'],
+      ...topSuppliers.map(([sup, val]) => [sup, `₱${val.toFixed(2)}`])
+    ];
+
+    // Create CSV content
+    const csvContent = summaryData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    // Download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Chart data for Top Categories
+  const categoriesChartData = {
+    labels: topCategories.map(([category]) => category),
+    datasets: [{
+      label: 'Value (₱)',
+      data: topCategories.map(([, value]) => value),
+      backgroundColor: [
+        'rgba(59, 130, 246, 0.7)',
+        'rgba(16, 185, 129, 0.7)',
+        'rgba(245, 158, 11, 0.7)',
+        'rgba(239, 68, 68, 0.7)',
+        'rgba(139, 92, 246, 0.7)',
+      ],
+      borderColor: [
+        'rgba(59, 130, 246, 1)',
+        'rgba(16, 185, 129, 1)',
+        'rgba(245, 158, 11, 1)',
+        'rgba(239, 68, 68, 1)',
+        'rgba(139, 92, 246, 1)',
+      ],
+      borderWidth: 2,
+    }],
+  };
+
+  // Chart data for Top Suppliers
+  const supplierColors = [
+    { bg: 'rgba(16, 185, 129, 0.7)', border: 'rgba(16, 185, 129, 1)' },
+    { bg: 'rgba(59, 130, 246, 0.7)', border: 'rgba(59, 130, 246, 1)' },
+    { bg: 'rgba(245, 158, 11, 0.7)', border: 'rgba(245, 158, 11, 1)' },
+    { bg: 'rgba(239, 68, 68, 0.7)', border: 'rgba(239, 68, 68, 1)' },
+    { bg: 'rgba(139, 92, 246, 0.7)', border: 'rgba(139, 92, 246, 1)' },
+  ];
+
+  const suppliersChartData = {
+    labels: ['Suppliers'],
+    datasets: topSuppliers.map(([supplier, value], index) => ({
+      label: supplier,
+      data: [value],
+      backgroundColor: supplierColors[index]?.bg || supplierColors[0].bg,
+      borderColor: supplierColors[index]?.border || supplierColors[0].border,
+      borderWidth: 2,
+    })),
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 1200,
+      easing: 'easeInOutQuart',
+      delay: (context) => {
+        // Stagger pie slice animation by index
+        let delay = 0;
+        if (context.type === 'data' && context.mode === 'default') {
+          delay = context.dataIndex * 120;
+        }
+        return delay;
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: 'rgb(107, 114, 128)',
+          padding: 15,
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return context.label + ': ₱' + context.parsed.toLocaleString();
+          }
+        }
+      }
+    }
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart',
+      delay: (context) => {
+        let delay = 0;
+        if (context.type === 'data' && context.mode === 'default') {
+          // Stagger bars per dataset to ensure visible animation
+          const di = typeof context.datasetIndex === 'number' ? context.datasetIndex : 0;
+          delay = di * 150;
+        }
+        return delay;
+      }
+    },
+    animations: {
+      y: {
+        duration: 1000,
+        easing: 'easeOutQuart'
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: 'rgb(107, 114, 128)',
+          padding: 15,
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return context.dataset.label + ': ₱' + context.parsed.y.toLocaleString();
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: 'rgb(107, 114, 128)',
+          callback: function(value) {
+            return '₱' + value.toLocaleString();
+          }
+        },
+        grid: {
+          color: 'rgba(107, 114, 128, 0.1)'
+        }
+      },
+      x: {
+        ticks: {
+          color: 'rgb(107, 114, 128)'
+        },
+        grid: {
+          color: 'rgba(107, 114, 128, 0.1)'
+        }
+      }
+    }
+  };
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-gray-900 dark:text-white">Analytics</h1>
-        <p className="text-gray-600 dark:text-gray-400">Insights and trends for your inventory</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Analytics</h1>
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Insights and trends for your inventory</p>
+          </div>
+          <Button variant="outline" className="gap-2" onClick={handleExport}>
+            <Download className="w-4 h-4" />
+            <span className="inline">Export</span>
+          </Button>
+        </div>
       </div>
       {loading && (
         <Card className="mb-6"><CardContent className="pt-6">Loading analytics...</CardContent></Card>
@@ -101,7 +292,7 @@ export function AnalyticsView({ products: initialProducts, categories: initialCa
       )}
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm">Total Value</CardTitle>
@@ -158,29 +349,10 @@ export function AnalyticsView({ products: initialProducts, categories: initialCa
             <CardTitle>Top Categories by Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-                {topCategories.map(([category, value], index) => {
-                const percentage = totalValue ? (value / totalValue) * 100 : 0;
-                return (
-                  <div key={category}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs dark:text-gray-200">
-                          {index + 1}
-                        </span>
-                      <span className="text-sm dark:text-gray-200">{category}</span>
-                    </div>
-                    <span className="text-sm text-gray-900 dark:text-gray-100">₱{value.toLocaleString()}</span>
-                  </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-center justify-center p-4">
+              <div className="w-full max-w-md">
+                <Pie data={categoriesChartData} options={chartOptions} />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -191,29 +363,10 @@ export function AnalyticsView({ products: initialProducts, categories: initialCa
             <CardTitle>Top Suppliers by Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {topSuppliers.map(([supplier, value], index) => {
-                const percentage = totalValue ? (value / totalValue) * 100 : 0;
-                return (
-                  <div key={supplier}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs dark:text-gray-200">
-                          {index + 1}
-                        </span>
-                        <span className="text-sm dark:text-gray-200">{supplier}</span>
-                      </div>
-                      <span className="text-sm dark:text-gray-200">₱{value.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 dark:bg-green-500 h-2 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-center justify-center p-4" style={{ height: '400px' }}>
+              <div className="w-full h-full">
+                <Bar data={suppliersChartData} options={barChartOptions} />
+              </div>
             </div>
           </CardContent>
         </Card>

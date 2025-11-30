@@ -28,6 +28,7 @@ const iconOptions = [
   { value: "⚡", label: "⚡ Electronics" },
   { value: "🏠", label: "🏠 Home" },
   { value: "🎮", label: "🎮 Gaming" },
+  { value: "🍕", label: "🍕 Foods" },
 ];
 
 export function EditCategoryDialog({ isOpen, onClose, onUpdate, category }) {

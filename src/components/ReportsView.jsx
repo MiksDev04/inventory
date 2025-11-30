@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Download, Archive } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -6,11 +7,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Toast } from './Toast';
 import api from '../lib/api';
 
-export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onFetchReports }) {
+export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onFetchReports, onNavigate }) {
   const [reports, setReports] = useState(initialReports);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [deleting, setDeleting] = useState(null);
+  const [archiving, setArchiving] = useState(null);
   const [page, setPage] = useState(initialPagination.page);
   const [perPage, setPerPage] = useState(initialPagination.perPage);
   const [totalCount, setTotalCount] = useState(initialPagination.total);
@@ -77,31 +78,97 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
     }
   };
 
-  const handleDeleteReport = async () => {
-    if (!deleting) return;
+  const handleArchiveReport = async () => {
+    if (!archiving) return;
     try {
-      await api.deleteReport(deleting.id);
+      await api.archiveReport(archiving.id);
       fetchReports(); // Refresh reports
-      setDeleting(null);
-      showToast('Report deleted successfully!', 'success');
+      setArchiving(null);
+      showToast('Report archived successfully!', 'success');
     } catch (e) {
-      setError('Failed to delete report');
-      showToast('Failed to delete report', 'error');
+      setError('Failed to archive report');
+      showToast('Failed to archive report', 'error');
       console.error(e);
     }
   };
 
+  const handleExport = () => {
+    // Prepare CSV data
+    const headers = [
+      'Period',
+      'Start Date',
+      'End Date',
+      'Days',
+      'Total Stock',
+      'Stock Change',
+      'Total Value',
+      'Value Change %',
+      'Products Added',
+      'Products Removed',
+      'Products Updated',
+      'Total Transactions',
+      'Avg Daily Transactions',
+      'Low Stock Count',
+      'Out of Stock Count',
+      'Created'
+    ];
+    
+    const rows = reports.map(r => [
+      r.period || '',
+      r.startDate || '',
+      r.endDate || '',
+      r.daysInPeriod || '',
+      r.totalProducts || 0,
+      r.stockChange || 0,
+      r.totalValue || 0,
+      r.valueChangePercent || 0,
+      r.productsAdded || 0,
+      r.productsRemoved || 0,
+      r.productsUpdated || 0,
+      r.totalTransactions || 0,
+      r.avgDailyTransactions || 0,
+      r.lowStockCount || 0,
+      r.outOfStockCount || 0,
+      r.createdAt ? new Date(r.createdAt).toLocaleString() : ''
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventory_reports_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl">Reports</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Periodic snapshots of inventory totals (weekly/monthly)</p>
+          <h1 className="text-xl md:text-2xl lg:text-3xl">Reports</h1>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Periodic snapshots of inventory totals (weekly/monthly)</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => handleGenerateReport('weekly')}>Generate Weekly</Button>
-          <Button onClick={() => handleGenerateReport('monthly')}>Generate Monthly</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+          <Button variant="outline" onClick={() => onNavigate && onNavigate('archived-reports')} className="gap-2">
+            <Archive className="w-4 h-4" />
+            <span className="hidden sm:inline">Archived</span>
+          </Button>
+          <Button onClick={() => handleGenerateReport('weekly')} className="text-sm">Generate Weekly</Button>
+          <Button onClick={() => handleGenerateReport('monthly')} className="text-sm">Generate Monthly</Button>
         </div>
       </div>
 
@@ -121,30 +188,79 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
                 <TableHeader>
                   <TableRow>
                     <TableHead>Period</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead>Total Products</TableHead>
+                    <TableHead>Date Range</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Total Stock</TableHead>
                     <TableHead>Total Value</TableHead>
-                    <TableHead>Low Stock</TableHead>
-                    <TableHead>Out of Stock</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Changes</TableHead>
+                    <TableHead>Activities</TableHead>
+                    <TableHead>Stock Issues</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reports.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell>{r.period}</TableCell>
-                      <TableCell>{r.startDate}</TableCell>
-                      <TableCell>{r.endDate}</TableCell>
-                      <TableCell>{r.totalProducts}</TableCell>
-                      <TableCell>₱{parseFloat(r.totalValue).toLocaleString()}</TableCell>
-                      <TableCell>{r.lowStockCount}</TableCell>
-                      <TableCell>{r.outOfStockCount}</TableCell>
-                      <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
+                      <TableCell className="capitalize font-medium">{r.period}</TableCell>
+                      <TableCell className="text-sm">
+                        <div>{r.startDate}</div>
+                        <div className="text-gray-500">to {r.endDate}</div>
+                      </TableCell>
+                      <TableCell>{r.daysInPeriod || 'N/A'}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>{r.totalProducts || 0} units</div>
+                        {r.stockChange !== undefined && (
+                          <div className={`text-xs ${
+                            r.stockChange >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'
+                          }`}>
+                            {r.stockChange >= 0 ? '+' : ''}{r.stockChange}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div>₱{parseFloat(r.totalValue || 0).toLocaleString()}</div>
+                        {r.valueChange !== undefined && (
+                          <div className={`text-xs ${
+                            r.valueChange >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'
+                          }`}>
+                            {r.valueChange >= 0 ? '+' : ''}{r.valueChangePercent}%
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {r.productsAdded !== undefined ? (
+                          <div>
+                            <div className="text-green-600 dark:text-green-500">+{r.productsAdded || 0} added</div>
+                            <div className="text-red-600 dark:text-red-500">-{r.productsRemoved || 0} removed</div>
+                            <div className="text-blue-600 dark:text-blue-500">{r.productsUpdated || 0} updated</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div>{r.totalTransactions || 0} total</div>
+                        <div className="text-gray-500">{parseFloat(r.avgDailyTransactions || 0).toFixed(1)}/day</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2 text-sm">
+                          {r.lowStockCount > 0 && (
+                            <span className="text-yellow-600 dark:text-yellow-500">{r.lowStockCount} low</span>
+                          )}
+                          {r.outOfStockCount > 0 && (
+                            <span className="text-red-600 dark:text-red-500">{r.outOfStockCount} out</span>
+                          )}
+                          {!r.lowStockCount && !r.outOfStockCount && (
+                            <span className="text-gray-400">None</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setDeleting(r)}>Delete</Button>
+                          <Button variant="outline" size="sm" onClick={() => setArchiving(r)} className="gap-1">
+                            <Archive className="w-3 h-3" />
+                            Archive
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -172,15 +288,15 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
+      <AlertDialog open={!!archiving} onOpenChange={() => setArchiving(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete report?</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete this report? This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>Archive report?</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to archive this report? You can restore it later from the archived reports page.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleting(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteReport}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setArchiving(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveReport}>Archive</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Upload, Trash2 } from "lucide-react";
+import { getImageUrl } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
 
 export function EditProductDialog({ product, isOpen, onClose, onUpdate, categories = [], suppliers = [] }) {
@@ -13,20 +15,127 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
     minQuantity: 0,
     price: 0,
     supplier: "",
-    status: "in-stock"
+    brand: "",
+    description: "",
+    status: "in-stock",
+    images: []
   });
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [existingImagePaths, setExistingImagePaths] = useState([]);
 
   useEffect(() => {
-    if (product) {
-      setFormData(product);
-    }
+    const loadProduct = async () => {
+      if (product) {
+        console.log('[EditProductDialog] Product loaded:', product);
+        console.log('[EditProductDialog] Product images:', product.images);
+        
+        setFormData({
+          name: product.name || "",
+          sku: product.sku || "",
+          category: product.category || "",
+          quantity: product.quantity || 0,
+          minQuantity: product.minQuantity || 0,
+          price: product.price || 0,
+          supplier: product.supplier || "",
+          brand: product.brand || "",
+          description: product.description || "",
+          status: product.status || "in-stock",
+          images: product.images || []
+        });
+        // Set existing image previews (from stored paths)
+        if (product.images && Array.isArray(product.images)) {
+          console.log('[EditProductDialog] Loading existing images:', product.images.length);
+          setExistingImagePaths(product.images);
+          
+          const previews = [];
+          for (let idx = 0; idx < product.images.length; idx++) {
+            const path = product.images[idx];
+            // Get image URL using helper (async)
+            const imageUrl = await getImageUrl(path);
+            console.log(`[EditProductDialog] Image ${idx}: path="${path}", url="${imageUrl}"`);
+            
+            previews.push({ 
+              url: imageUrl || path, 
+              originalPath: path,
+              isExisting: true,
+              index: idx
+            });
+          }
+          
+          console.log('[EditProductDialog] Previews created:', previews.length);
+          setImagePreviews(previews);
+        } else {
+          console.log('[EditProductDialog] No existing images');
+          setExistingImagePaths([]);
+          setImagePreviews([]);
+        }
+        setNewImages([]);
+      }
+    };
+    
+    loadProduct();
   }, [product]);
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    console.log('[EditProductDialog] Files selected:', files.length, files);
+    if (files.length === 0) return;
+
+    // Create previews for new images
+    const previews = files.map(file => ({
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name,
+      isExisting: false
+    }));
+
+    console.log('[EditProductDialog] Previews created:', previews.length);
+    setImagePreviews(prev => {
+      const updated = [...prev, ...previews];
+      console.log('[EditProductDialog] Image previews updated to:', updated.length);
+      return updated;
+    });
+    setNewImages(prev => {
+      const updated = [...prev, ...files];
+      console.log('[EditProductDialog] New images updated to:', updated.length);
+      return updated;
+    });
+  };
+
+  const handleRemoveImage = (index) => {
+    const preview = imagePreviews[index];
+    
+    if (preview.isExisting) {
+      // Remove from existing paths
+      setExistingImagePaths(prev => prev.filter(path => path !== preview.originalPath));
+    } else {
+      // Revoke blob URL and remove from new images
+      URL.revokeObjectURL(preview.url);
+      const newImageIndex = imagePreviews.slice(0, index).filter(p => !p.isExisting).length;
+      setNewImages(prev => {
+        const newArr = [...prev];
+        newArr.splice(newImageIndex, 1);
+        return newArr;
+      });
+    }
+    
+    // Remove from previews
+    setImagePreviews(prev => {
+      const newPreviews = [...prev];
+      newPreviews.splice(index, 1);
+      return newPreviews;
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    console.log('Form submitted!', formData);
-    console.log('Product ID:', product.id, 'Type:', typeof product.id);
+    console.log('[EditProductDialog] Form submitted!');
+    console.log('[EditProductDialog] formData:', formData);
+    console.log('[EditProductDialog] existingImagePaths:', existingImagePaths);
+    console.log('[EditProductDialog] newImages:', newImages);
+    console.log('[EditProductDialog] Product ID:', product.id, 'Type:', typeof product.id);
     
     // Determine status based on quantity and minQuantity
     let status = "in-stock";
@@ -43,13 +152,20 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       sku: formData.sku,
       category: formData.category,
       supplier: formData.supplier,
+      brand: formData.brand,
+      description: formData.description,
       quantity: Number(formData.quantity),
       minQuantity: Number(formData.minQuantity),
       price: Number(formData.price),
-      status
+      status,
+      // Keep existing images (original paths) + add new ones
+      existingImages: existingImagePaths,
+      newImages: newImages
     };
     
-    console.log('Calling onUpdate with:', updateData);
+    console.log('[EditProductDialog] Calling onUpdate with:', updateData);
+    console.log('[EditProductDialog] existingImages count:', updateData.existingImages?.length);
+    console.log('[EditProductDialog] newImages count:', updateData.newImages?.length);
     onUpdate(updateData);
   };
 
@@ -60,10 +176,10 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 border border-gray-200 dark:border-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Product</h2>
           <button
             onClick={onClose}
@@ -74,7 +190,8 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 overflow-y-auto flex-1">
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -154,6 +271,29 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
               </div>
             </div>
 
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Brand
+              </label>
+              <Input
+                value={formData.brand}
+                onChange={(e) => handleChange("brand", e.target.value)}
+                placeholder="Enter product brand (optional)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Description
+              </label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+                placeholder="Enter product description (optional)"
+                rows={3}
+              />
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -196,15 +336,69 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                 />
               </div>
             </div>
+
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Product Images
+              </label>
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="edit-product-images"
+                />
+                <label
+                  htmlFor="edit-product-images"
+                  className="flex flex-col items-center justify-center cursor-pointer"
+                >
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Click to upload more images
+                  </span>
+                </label>
+
+                {/* Image Previews */}
+                {imagePreviews.length > 0 && (
+                  <div className="mt-4 grid grid-cols-4 gap-2">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview.url}
+                          alt={preview.name || `Image ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border border-gray-300 dark:border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                        {preview.isExisting && (
+                          <span className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                            Saved
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex gap-3 justify-end px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit">
-              Update Product
+              Save Changes
             </Button>
           </div>
         </form>

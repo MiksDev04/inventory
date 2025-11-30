@@ -30,22 +30,57 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
     setIsAddDialogOpen(false);
   };
 
+  const handleExport = () => {
+    // Prepare CSV data
+    const headers = ['SKU', 'Name', 'Brand', 'Category', 'Supplier', 'Quantity', 'Min Quantity', 'Price', 'Status', 'Description'];
+    const rows = filteredProducts.map(p => [
+      p.sku || '',
+      p.name || '',
+      p.brand || '',
+      p.category || '',
+      p.supplier || '',
+      p.quantity || 0,
+      p.minQuantity || 0,
+      p.price || 0,
+      p.status || '',
+      (p.description || '').replace(/[\n\r"/]/g, ' ')
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventory_products_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="dark:text-white">Inventory Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">View and manage all inventory products</p>
+            <h1 className="text-xl md:text-2xl lg:text-3xl dark:text-white">Inventory Management</h1>
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">View and manage all inventory products</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleExport}>
               <Download className="w-4 h-4" />
-              Export
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
               <Plus className="w-4 h-4" />
-              Add Product
+              <span className="hidden sm:inline">Add Product</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>

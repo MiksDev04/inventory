@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ProfileProvider } from './context/ProfileContext';
@@ -10,13 +10,15 @@ import { AnalyticsView } from "./components/AnalyticsView";
 import { SuppliersView } from "./components/SuppliersView";
 import { SettingsView } from "./components/SettingsView";
 import ReportsView from "./components/ReportsView";
+import ArchivedReportsView from "./components/ArchivedReportsView";
 import { InventoryView } from './components/InventoryView';
 import { Toast } from './components/Toast';
+import TransactionsView from './components/TransactionsView';
 import api from './lib/api';
 
 function App() {
   const [currentView, setCurrentView] = useState("dashboard");
-  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [sidebarWidth, setSidebarWidth] = useState(() => window.innerWidth >= 1024 ? 240 : 0);
   const [loggedIn, setLoggedIn] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -24,10 +26,26 @@ function App() {
   const [reports, setReports] = useState([]);
   const [reportsPagination, setReportsPagination] = useState({ page: 1, perPage: 10, total: 0 });
   const [toast, setToast] = useState({ message: '', type: 'success' });
+  const [transactions, setTransactions] = useState([]);
+  const [transactionsPagination, setTransactionsPagination] = useState({ page: 1, perPage: 20, total: 0 });
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
+  // Update sidebar width on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarWidth(0);
+      } else if (sidebarWidth === 0) {
+        setSidebarWidth(240);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [sidebarWidth]);
 
   // Fetch initial data on mount for dashboard
   useEffect(() => {
@@ -37,6 +55,31 @@ function App() {
       fetchSuppliers();
     }
   }, [loggedIn]);
+
+  const fetchReports = useCallback(async (page = reportsPagination.page, perPage = reportsPagination.perPage) => {
+    try {
+      const res = await api.getReports({ page, perPage });
+      setReports(res.data || []);
+      setReportsPagination({ page, perPage, total: res.total || 0 });
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    }
+  }, [reportsPagination.page, reportsPagination.perPage]);
+
+  const fetchTransactions = useCallback(async (page = transactionsPagination.page, perPage = transactionsPagination.perPage) => {
+    try {
+      const res = await api.listTransactions({ page, perPage });
+      if (Array.isArray(res)) {
+        setTransactions(res);
+        setTransactionsPagination({ page, perPage, total: res.length });
+      } else {
+        setTransactions(res.data || []);
+        setTransactionsPagination({ page: res.page || page, perPage: res.perPage || perPage, total: res.total || 0 });
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  }, [transactionsPagination.page, transactionsPagination.perPage]);
 
   // Fetch data when switching views (only if not already loaded)
   useEffect(() => {
@@ -52,22 +95,24 @@ function App() {
     if (currentView === 'reports' && reports.length === 0) {
       fetchReports();
     }
-  }, [currentView]);
-
-  const fetchReports = async (page = reportsPagination.page, perPage = reportsPagination.perPage) => {
-    try {
-      const res = await api.getReports({ page, perPage });
-      setReports(res.data || []);
-      setReportsPagination({ page, perPage, total: res.total || 0 });
-    } catch (error) {
-      console.error("Error fetching reports:", error);
+    if (currentView === 'transactions' && transactions.length === 0) {
+      fetchTransactions();
     }
-  };
+  }, [currentView, products.length, categories.length, suppliers.length, reports.length, transactions.length, fetchReports, fetchTransactions]);
 
   const fetchProducts = async () => {
     try {
       const fetchedProducts = await api.listProducts();
       setProducts(fetchedProducts);
+      
+      // Check for products with low/out of stock and create notifications if needed
+      if (fetchedProducts && fetchedProducts.length > 0) {
+        try {
+          await api.checkAllProductsForNotifications();
+        } catch (e) {
+          console.error('Failed to check products for notifications', e);
+        }
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
     }
@@ -77,7 +122,17 @@ function App() {
     try {
       const newProduct = await api.createProduct(productData);
       fetchProducts(); // Refetch products after adding
+      fetchTransactions(); // Refresh transaction log
       showToast('Product added successfully!', 'success');
+      
+      // Check if the newly added product needs a stock notification
+      if (newProduct && newProduct.id) {
+        try {
+          await api.checkProductStockNotification(newProduct.id);
+        } catch (e) {
+          console.error('Failed to check stock notification', e);
+        }
+      }
     } catch (error) {
       console.error("Error adding product:", error);
       showToast('Failed to add product', 'error');
@@ -88,6 +143,7 @@ function App() {
     try {
       await api.updateProduct(productId, productData);
       fetchProducts(); // Refetch products after updating
+      fetchTransactions(); // Refresh transaction log
       showToast('Product updated successfully!', 'success');
       
       // Check only this specific product for stock notification
@@ -106,6 +162,7 @@ function App() {
     try {
       await api.deleteProduct(productId);
       fetchProducts(); // Refetch products after deleting
+      fetchTransactions(); // Refresh transaction log
       showToast('Product deleted successfully!', 'success');
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -220,6 +277,8 @@ function App() {
     }
   };
 
+  // Transactions are read-only in the UI; add actions disabled
+
   const handleLogout = () => {
     setLoggedIn(false);
     setCurrentView("dashboard");
@@ -244,8 +303,10 @@ function App() {
                 logout={handleLogout}
               />
               <main 
-                className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#0d1117]"
-                style={{ marginLeft: `${sidebarWidth}px` }}
+                className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#0d1117] w-full pt-16 lg:pt-0"
+                style={{ 
+                  marginLeft: sidebarWidth
+                }}
               >
           {currentView === 'dashboard' && <Dashboard products={products} categories={categories} suppliers={suppliers} />}
           {currentView === 'inventory' && (
@@ -283,8 +344,15 @@ function App() {
               reports={reports}
               pagination={reportsPagination}
               onFetchReports={fetchReports}
+              onNavigate={setCurrentView}
             />
           )}
+          {currentView === 'transactions' && (
+            <TransactionsView
+              transactions={transactions}
+            />
+          )}
+          {currentView === 'archived-reports' && <ArchivedReportsView onNavigate={setCurrentView} />}
             </main>
             </div>
           </>

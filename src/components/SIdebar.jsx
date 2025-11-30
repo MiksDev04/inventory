@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Package, LayoutDashboard, Settings, Users, TrendingUp, BarChart, Bell, Moon, Sun, GripVertical, FolderOpen, LogOut } from "lucide-react";
+import { Package, LayoutDashboard, Settings, Users, TrendingUp, BarChart, Bell, Moon, Sun, GripVertical, FolderOpen, LogOut, ArrowLeftRight, Menu, X } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
@@ -11,6 +11,7 @@ const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inventory", label: "Inventory", icon: Package },
   { id: "categories", label: "Categories", icon: FolderOpen },
+  { id: "transactions", label: "Transactions", icon: ArrowLeftRight },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
   { id: "reports", label: "Reports", icon: BarChart },
   { id: "suppliers", label: "Suppliers", icon: Users },
@@ -26,6 +27,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const sidebarRef = useRef(null);
 
   // Fetch unread count on mount and periodically
@@ -77,13 +79,41 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const handleMouseDown = () => {
     setIsResizing(true);
   };
+
+  const handleNavigate = (id) => {
+    onNavigate(id);
+    setIsMobileMenuOpen(false); // Close mobile menu after navigation
+  };
   
   return (
-    <div 
-      ref={sidebarRef}
-      className="bg-gray-900 dark:bg-gray-950 text-white h-screen fixed left-0 top-0 flex flex-col border-r border-gray-800 dark:border-gray-800"
-      style={{ width: `${width}px` }} 
-    >
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-900 dark:bg-gray-950 text-white rounded-lg shadow-lg"
+      >
+        {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div 
+        ref={sidebarRef}
+        className={cn(
+          "bg-gray-900 dark:bg-gray-950 text-white h-screen fixed left-0 top-0 flex flex-col border-r border-gray-800 dark:border-gray-800 z-40 transition-all duration-300",
+          // Mobile: slide in/out with fixed width
+          "w-[280px] lg:w-auto",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+        style={{ width: window.innerWidth >= 1024 ? `${width}px` : undefined }}
+      >
       {/* Logo/Brand */}
       <div className="p-6 border-b border-gray-800 dark:border-gray-800">
         <div className="flex items-center justify-between">
@@ -109,7 +139,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
             return (
               <button
                 key={item.id}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => handleNavigate(item.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                   isActive 
@@ -180,6 +210,13 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
         </div>
       </div>
 
+      {/* Resize Handle - Hidden on mobile */}
+      <div
+        className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors group"
+        onMouseDown={handleMouseDown}
+      />
+      </div>
+
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotifications} 
@@ -206,11 +243,11 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Resize Handle */}
+      {/* Resize Handle - Hidden on mobile */}
       <div
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors group"
+        className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors group"
         onMouseDown={handleMouseDown}
       />
-    </div>
+    </>
   );
 }
