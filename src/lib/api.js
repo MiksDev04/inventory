@@ -65,37 +65,37 @@ export async function createProduct(payload) {
   return created;
 }
 
-// Helper function to upload images
+// Helper function to upload images to Firebase Storage
 async function uploadProductImages(files, sku) {
-  const uploadedPaths = [];
+  const uploadedUrls = [];
   
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const ext = file.name.split('.').pop();
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${i}.${ext}`;
-    const relativePath = `/uploads/products/${sku}/${filename}`;
     
     try {
-      // Save to IndexedDB for persistence
-      await saveImage(relativePath, file);
-      
-      uploadedPaths.push(relativePath);
-      console.log(`✓ Image saved to IndexedDB: ${relativePath}`);
+      // Upload to Firebase Storage
+      const downloadURL = await fb.uploadImageToStorage(file, sku, i);
+      uploadedUrls.push(downloadURL);
+      console.log(`✓ Image uploaded to Firebase Storage: ${downloadURL}`);
     } catch (e) {
       console.error(`✗ Failed to upload ${file.name}:`, e);
     }
   }
   
-  console.log(`Uploaded ${uploadedPaths.length} images:`, uploadedPaths);
-  return uploadedPaths;
+  console.log(`Uploaded ${uploadedUrls.length} images to Firebase Storage`);
+  return uploadedUrls;
 }
 
 // Helper function to get image URL from path
 export async function getImageUrl(path) {
   if (!path) return null;
   
-  // Try to get from IndexedDB
+  // If it's already a full URL (from Firebase Storage), return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  
+  // Legacy IndexedDB support - try to get from IndexedDB
   const url = await getImage(path);
   if (url) return url;
   
@@ -105,6 +105,9 @@ export async function getImageUrl(path) {
 
 export async function updateProduct(id, payload) {
   console.log('updateProduct called with id:', id, 'payload:', payload);
+  
+  // Fetch previous product data for comparison and image cleanup
+  const previous = await fb.getProduct(id);
   
   // Remove id from payload to avoid conflicts
   const { id: _, existingImages, newImages, ...updateData } = payload;
@@ -121,6 +124,22 @@ export async function updateProduct(id, payload) {
     console.log('New image paths:', additionalImagePaths);
   }
   
+  // Delete removed images from Firebase Storage
+  const previousImages = Array.isArray(previous?.images) ? previous.images : [];
+  const keptImages = Array.isArray(existingImages) ? existingImages : [];
+  const removedImages = previousImages.filter(img => !keptImages.includes(img));
+  
+  for (const imageUrl of removedImages) {
+    if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+      try {
+        await fb.deleteImageFromStorage(imageUrl);
+        console.log('✓ Deleted removed image from Storage:', imageUrl);
+      } catch (e) {
+        console.error('Failed to delete image:', e);
+      }
+    }
+  }
+  
   // Combine existing and new image paths - always set images field
   const allImages = [...(existingImages || []), ...additionalImagePaths];
   console.log('All images to save:', allImages);
@@ -129,8 +148,6 @@ export async function updateProduct(id, payload) {
   
   console.log('Updating product in Firestore:', updateData);
   
-  // Get previous product to compute diffs  
-  const previous = await fb.getProduct(id);
   await fb.updateProduct(id, updateData);
   const updated = await fb.getProduct(id);
   try {
@@ -195,8 +212,23 @@ export async function updateProduct(id, payload) {
 }
 
 export async function deleteProduct(id) {
-  // Fetch product before deletion to log
+  // Fetch product before deletion to log and delete images
   const existing = await fb.getProduct(id);
+  
+  // Delete images from Firebase Storage
+  if (existing?.images && Array.isArray(existing.images)) {
+    for (const imageUrl of existing.images) {
+      if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+        try {
+          await fb.deleteImageFromStorage(imageUrl);
+          console.log('✓ Deleted image from Storage:', imageUrl);
+        } catch (e) {
+          console.error('Failed to delete image:', e);
+        }
+      }
+    }
+  }
+  
   await fb.deleteProduct(id);
   try {
     await fb.createTransaction({

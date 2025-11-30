@@ -15,6 +15,13 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from 'firebase/storage';
 
 // Firebase config
 const firebaseConfig = {
@@ -30,6 +37,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 function docData(d) {
   const raw = d.data ? d.data() : d;
@@ -43,6 +51,33 @@ function docData(d) {
   }
   
   return { id: d.id, ...converted };
+}
+
+// --- Firebase Storage helpers ---
+export async function uploadImageToStorage(file, sku, index) {
+  try {
+    const fileName = `${sku}-${index}-${Date.now()}`;
+    const storageRef = ref(storage, `product-images/${fileName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading image to Firebase Storage:', error);
+    throw error;
+  }
+}
+
+export async function deleteImageFromStorage(imageUrl) {
+  try {
+    // Extract path from URL
+    if (imageUrl && imageUrl.includes('firebase')) {
+      const imageRef = ref(storage, imageUrl);
+      await deleteObject(imageRef);
+    }
+  } catch (error) {
+    console.error('Error deleting image from Firebase Storage:', error);
+    // Don't throw - deletion errors shouldn't block product updates
+  }
 }
 
 // --- Products ---
@@ -362,6 +397,9 @@ export default {
   createProduct,
   updateProduct,
   deleteProduct,
+  // storage
+  uploadImageToStorage,
+  deleteImageFromStorage,
   // categories
   listCategories,
   findCategoryByName,
