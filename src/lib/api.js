@@ -41,7 +41,12 @@ export async function createProduct(payload) {
   }
   
   // Create product with image paths
-  const productData = { ...payload };
+  const productData = { 
+    ...payload,
+    price: Number(payload.price) || 0,
+    quantity: Number(payload.quantity) || 0,
+    minQuantity: Number(payload.minQuantity || payload.min_quantity) || 0
+  };
   delete productData.images; // Remove File objects
   productData.images = imagePaths; // Add paths
   
@@ -112,6 +117,12 @@ export async function updateProduct(id, payload) {
   
   // Remove id from payload to avoid conflicts
   const { id: _, existingImages, newImages, ...updateData } = payload;
+  
+  // Convert numeric fields to numbers
+  if (updateData.price !== undefined) updateData.price = Number(updateData.price) || 0;
+  if (updateData.quantity !== undefined) updateData.quantity = Number(updateData.quantity) || 0;
+  if (updateData.minQuantity !== undefined) updateData.minQuantity = Number(updateData.minQuantity) || 0;
+  if (updateData.min_quantity !== undefined) updateData.minQuantity = Number(updateData.min_quantity) || 0;
   
   console.log('existingImages:', existingImages);
   console.log('newImages:', newImages, 'Type:', Array.isArray(newImages), 'Length:', newImages?.length);

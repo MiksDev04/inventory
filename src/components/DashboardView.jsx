@@ -47,19 +47,28 @@ export default function Dashboard({ products: initialProducts, categories: initi
     }
   }, []);
 
-  const totalProducts = (products || []).reduce((sum, product) => sum + product.quantity, 0);
+  const totalProducts = (products || []).reduce((sum, product) => sum + (Number(product.quantity) || 0), 0);
   const totalCategories = categoriesList.length;
   const totalSuppliers = suppliersList.length;
-  const totalValue = (products || []).reduce((sum, product) => sum + (product.quantity * product.price), 0);
+  const totalValue = (products || []).reduce((sum, product) => {
+    const qty = Number(product.quantity) || 0;
+    const price = Number(product.price) || 0;
+    return sum + (qty * price);
+  }, 0);
   
   const categoryBreakdown = (products || []).reduce((acc, product) => {
-    acc[product.category] = (acc[product.category] || 0) + product.quantity;
+    const qty = Number(product.quantity) || 0;
+    acc[product.category] = (acc[product.category] || 0) + qty;
     return acc;
   }, {});
 
   const recentlyUpdated = (products || []).slice().sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()).slice(0,5);
 
-  const topValueProducts = (products || []).slice().sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price)).slice(0,5);
+  const topValueProducts = (products || []).slice().sort((a, b) => {
+    const aValue = (Number(a.quantity) || 0) * (Number(a.price) || 0);
+    const bValue = (Number(b.quantity) || 0) * (Number(b.price) || 0);
+    return bValue - aValue;
+  }).slice(0,5);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-[#0d1117]">
@@ -167,12 +176,12 @@ export default function Dashboard({ products: initialProducts, categories: initi
             <CardContent>
               <div className="space-y-4">
                 {topValueProducts.map((product) => {
-                  const productValue = product.quantity * product.price;
+                  const productValue = (Number(product.quantity) || 0) * (Number(product.price) || 0);
                   return (
                     <div key={product.id} className="flex items-center justify-between">
                       <div className="flex-1">
                         <p className="text-sm text-gray-900 dark:text-gray-200">{product.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{product.quantity} units × ₱{product.price.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{product.quantity} units × ₱{Number(product.price).toLocaleString()}</p>
                       </div>
                       <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">₱{productValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
