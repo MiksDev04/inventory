@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export function InventoryTable({ products = [], onUpdate, onDelete, categories = [], suppliers = [] }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [viewingProduct, setViewingProduct] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingProduct, setDeletingProduct] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageUrls, setImageUrls] = useState({});
@@ -70,9 +70,9 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
   };
 
   const handleDelete = () => {
-    if (deletingId) {
-      onDelete(deletingId);
-      setDeletingId(null);
+    if (deletingProduct) {
+      onDelete(deletingProduct.id);
+      setDeletingProduct(null);
     }
   };
 
@@ -182,7 +182,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                               Edit
                             </DropdownMenuProduct>
                             <DropdownMenuProduct 
-                              onClick={() => setDeletingId(product.id)}
+                              onClick={() => setDeletingProduct(product)}
                               className="text-red-600 dark:text-red-400"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -226,16 +226,16 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
       )}
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+      <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deletingProduct?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the inventory product.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeletingProduct(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

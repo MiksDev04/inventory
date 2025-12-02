@@ -27,9 +27,10 @@ export function TableBody({ children, className = "" }) {
   );
 }
 
-export function TableRow({ children, className = "" }) {
+export function TableRow({ children, className = "", onClick }) {
   return (
     <tr
+      onClick={onClick}
       className={cn(
         "border-b border-gray-200 dark:border-gray-800 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/50 data-[state=selected]:bg-gray-100 dark:data-[state=selected]:bg-gray-800",
         className

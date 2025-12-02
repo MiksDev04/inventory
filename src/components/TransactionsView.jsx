@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Search, Filter, Download } from "lucide-react";
+import { ArrowLeftRight, Search, Filter, Download, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
@@ -12,14 +12,9 @@ export default function TransactionsView({
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("30"); // days
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   const filtered = useMemo(() => {
-    // console.log('Filter Debug:', {
-    //   periodFilter,
-    //   totalTransactions: transactions?.length || 0,
-    //   typeFilter
-    // });
-
     // Apply type and search filters
     let result = (transactions || []).filter((t) => {
       // type filter
@@ -50,12 +45,6 @@ export default function TransactionsView({
       const now = new Date();
       const days = Number(periodFilter);
       const cutoffDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-      
-      // console.log('Applying date filter:', {
-      //   now: now.toISOString(),
-      //   days,
-      //   cutoffDate: cutoffDate.toISOString()
-      // });
 
       result = result.filter((t) => {
         const d = t.createdAt || t.date || t.created_at;
@@ -76,21 +65,10 @@ export default function TransactionsView({
           }
         }
         
-        const passes = transactionDate && transactionDate >= cutoffDate;
-        
-        if (!passes) {
-          console.log('Filtering out:', {
-            product: t.productName,
-            date: transactionDate?.toISOString(),
-            cutoff: cutoffDate.toISOString()
-          });
-        }
-        
-        return passes;
+        return transactionDate && transactionDate >= cutoffDate;
       });
     }
 
-    console.log('Final filtered count:', result.length);
     return result;
   }, [transactions, searchTerm, typeFilter, periodFilter]);
 
@@ -230,8 +208,15 @@ export default function TransactionsView({
               })();
 
               const isUpdate = String(t.type || '').toLowerCase() === 'product_update';
+              const isCreate = String(t.type || '').toLowerCase() === 'product_create';
+              const isDelete = String(t.type || '').toLowerCase() === 'product_delete';
+              
               let notesText = '';
-              if (isUpdate) {
+              
+              if (isCreate || isDelete) {
+                // Use the notes field directly for create/delete
+                notesText = t.notes || '';
+              } else if (isUpdate) {
                 // Prefer detailed changes object if present
                 if (t.changes && typeof t.changes === 'object') {
                   const parts = Object.entries(t.changes).map(([key, val]) => {
@@ -263,7 +248,14 @@ export default function TransactionsView({
               }
 
               return (
-                <TableRow key={t.id || `${dateStr}-${t.itemSku || t.productSku || Math.random()}`}>
+                <TableRow 
+                  key={t.id || `${dateStr}-${t.itemSku || t.productSku || Math.random()}`}
+                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTransaction(t);
+                  }}
+                >
                   <TableCell className="whitespace-nowrap">{dateStr}</TableCell>
                   <TableCell className="capitalize whitespace-nowrap">{String(t.type || "").toLowerCase()}</TableCell>
                   <TableCell className="whitespace-nowrap">{t.productName || t.product_name || "-"}</TableCell>
@@ -280,6 +272,142 @@ export default function TransactionsView({
         </TableBody>
       </Table>
       </div>
+
+      {/* Transaction Detail Modal */}
+      {selectedTransaction && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4"
+          onClick={() => setSelectedTransaction(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Transaction Details</h2>
+              <button
+                onClick={() => setSelectedTransaction(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Date</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {(() => {
+                      const d = selectedTransaction.createdAt || selectedTransaction.date || selectedTransaction.created_at;
+                      try {
+                        const dd = d ? new Date(d) : null;
+                        return dd ? dd.toLocaleString() : "N/A";
+                      } catch {
+                        return String(d || "N/A");
+                      }
+                    })()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1 capitalize">
+                    {String(selectedTransaction.type || "N/A").replace(/_/g, ' ')}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Product Name</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {selectedTransaction.productName || selectedTransaction.product_name || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">SKU</label>
+                  <p className="text-base font-mono text-gray-900 dark:text-white mt-1">
+                    {selectedTransaction.itemSku || selectedTransaction.productSku || selectedTransaction.sku || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Category</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {selectedTransaction.category || selectedTransaction.categoryName || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Quantity</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {Number(selectedTransaction.quantity || 0)} units
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Unit Price</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    ₱{Number(selectedTransaction.unitPrice || selectedTransaction.price || 0).toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Value</label>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">
+                    ₱{Number(selectedTransaction.total || (selectedTransaction.quantity || 0) * (selectedTransaction.unitPrice || selectedTransaction.price || 0)).toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Supplier</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {selectedTransaction.supplier || selectedTransaction.party_name || selectedTransaction.partyName || selectedTransaction.customer || "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {selectedTransaction.changes && Object.keys(selectedTransaction.changes).length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Changes Made</label>
+                  <div className="mt-2 space-y-2">
+                    {Object.entries(selectedTransaction.changes).map(([key, val]) => {
+                      const from = val && typeof val === 'object' ? val.from : undefined;
+                      const to = val && typeof val === 'object' ? val.to : undefined;
+                      return (
+                        <div key={key} className="flex items-center gap-2 text-sm">
+                          <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">{key}:</span>
+                          <span className="text-red-600 dark:text-red-400">{String(from || '-')}</span>
+                          <span className="text-gray-500">→</span>
+                          <span className="text-green-600 dark:text-green-400">{String(to || '-')}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedTransaction.notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</label>
+                  <p className="text-base text-gray-900 dark:text-white mt-1 whitespace-pre-wrap">
+                    {selectedTransaction.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <Button onClick={() => setSelectedTransaction(null)} variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

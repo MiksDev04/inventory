@@ -96,7 +96,17 @@ export function subscribeToProducts(callback) {
   const q = query(collection(db, 'products'), orderBy('createdAt'));
   return onSnapshot(q, (snapshot) => {
     const products = [];
-    snapshot.forEach(d => products.push(docData(d)));
+    snapshot.forEach(d => {
+      const product = docData(d);
+      // Add lastUpdated field transformation
+      product.lastUpdated = product.updatedAt 
+        ? new Date(product.updatedAt).toISOString().split('T')[0] 
+        : new Date().toISOString().split('T')[0];
+      product.price = Number(product.price || 0);
+      product.quantity = Number(product.quantity || 0);
+      product.minQuantity = Number(product.min_quantity || product.minQuantity || 0);
+      products.push(product);
+    });
     callback(products);
   });
 }
@@ -249,12 +259,32 @@ export async function getUserByUsername(username) {
   const q = query(collection(db, 'inventory_users'), where('username', '==', username));
   const snap = await getDocs(q);
   const first = snap.docs[0];
-  return first ? docData(first) : null;
+  if (!first) return null;
+  const data = docData(first);
+  // Normalize field names (support both snake_case and camelCase)
+  return {
+    ...data,
+    password_hash: data.passwordHash || data.password_hash,
+    full_name: data.fullName || data.full_name,
+    is_active: data.isActive || data.is_active,
+    created_at: data.createdAt || data.created_at,
+    updated_at: data.updatedAt || data.updated_at
+  };
 }
 
 export async function getUserById(id) {
   const d = await getDoc(doc(db, 'inventory_users', String(id)));
-  return d.exists() ? docData(d) : null;
+  if (!d.exists()) return null;
+  const data = docData(d);
+  // Normalize field names (support both snake_case and camelCase)
+  return {
+    ...data,
+    password_hash: data.passwordHash || data.password_hash,
+    full_name: data.fullName || data.full_name,
+    is_active: data.isActive || data.is_active,
+    created_at: data.createdAt || data.created_at,
+    updated_at: data.updatedAt || data.updated_at
+  };
 }
 
 export async function hashPassword(password) {
@@ -273,11 +303,20 @@ export async function comparePassword(password, storedHash) {
 export async function createUser(payload) {
   const p = { ...payload };
   if (p.password) {
-    p.password_hash = await hashPassword(p.password);
+    p.passwordHash = await hashPassword(p.password);
     delete p.password;
   }
-  p.created_at = serverTimestamp();
-  p.updated_at = serverTimestamp();
+  // Normalize to camelCase for consistency with Firebase
+  if (p.full_name) {
+    p.fullName = p.full_name;
+    delete p.full_name;
+  }
+  if (p.is_active !== undefined) {
+    p.isActive = p.is_active;
+    delete p.is_active;
+  }
+  p.createdAt = serverTimestamp();
+  p.updatedAt = serverTimestamp();
   const r = await addDoc(collection(db, 'inventory_users'), p);
   return r.id;
 }
@@ -285,10 +324,19 @@ export async function createUser(payload) {
 export async function updateUser(id, payload) {
   const p = { ...payload };
   if (p.password) {
-    p.password_hash = await hashPassword(p.password);
+    p.passwordHash = await hashPassword(p.password);
     delete p.password;
   }
-  await updateDoc(doc(db, 'inventory_users', String(id)), { ...p, updated_at: serverTimestamp() });
+  // Normalize to camelCase for consistency with Firebase
+  if (p.full_name) {
+    p.fullName = p.full_name;
+    delete p.full_name;
+  }
+  if (p.is_active !== undefined) {
+    p.isActive = p.is_active;
+    delete p.is_active;
+  }
+  await updateDoc(doc(db, 'inventory_users', String(id)), { ...p, updatedAt: serverTimestamp() });
 }
 
 export async function verifyLogin(username, password) {
@@ -389,7 +437,7 @@ export async function listReports(includeArchived = false) {
   let snap;
   try {
     snap = await getDocs(query(collection(db, 'inventory_reports'), orderBy('createdAt', 'desc')));
-  } catch (_e) {
+  } catch {
     // If createdAt index doesn't exist, try created_at
     snap = await getDocs(query(collection(db, 'inventory_reports'), orderBy('created_at', 'desc')));
   }
@@ -426,7 +474,7 @@ export function subscribeToReports(callback, includeArchived = false) {
   let q;
   try {
     q = query(collection(db, 'inventory_reports'), orderBy('createdAt', 'desc'));
-  } catch (_e) {
+  } catch {
     q = query(collection(db, 'inventory_reports'), orderBy('created_at', 'desc'));
   }
   
@@ -511,7 +559,7 @@ export async function listTransactions() {
   let snap;
   try {
     snap = await getDocs(query(collection(db, 'transactions'), orderBy('createdAt', 'desc')));
-  } catch (_e) {
+  } catch {
     // If createdAt index doesn't exist, try created_at
     snap = await getDocs(query(collection(db, 'transactions'), orderBy('created_at', 'desc')));
   }
@@ -525,7 +573,7 @@ export function subscribeToTransactions(callback) {
   let q;
   try {
     q = query(collection(db, 'transactions'), orderBy('createdAt', 'desc'));
-  } catch (_e) {
+  } catch {
     q = query(collection(db, 'transactions'), orderBy('created_at', 'desc'));
   }
   return onSnapshot(q, (snapshot) => {

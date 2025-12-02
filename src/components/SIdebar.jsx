@@ -141,7 +141,7 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
                   isActive 
                     ? "bg-blue-600 dark:bg-blue-500 text-white" 
                     : "text-gray-300 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-900 hover:text-white dark:hover:text-white"
@@ -242,12 +242,6 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Resize Handle - Hidden on mobile */}
-      <div
-        className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors group"
-        onMouseDown={handleMouseDown}
-      />
     </>
   );
 }

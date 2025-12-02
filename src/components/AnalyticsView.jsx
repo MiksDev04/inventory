@@ -120,7 +120,7 @@ export function AnalyticsView(props) {
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    document.body.removeChild(link); 
   };
 
   // Chart data for Top Categories

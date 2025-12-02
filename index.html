@@ -13,6 +13,15 @@
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(theme);
       })();
+      
+      // Suppress browser extension errors
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        const originalError = console.error;
+        console.error = function(...args) {
+          if (args[0] && args[0].toString().includes('runtime.lastError')) return;
+          originalError.apply(console, args);
+        };
+      }
     </script>
   </head>
   <body>

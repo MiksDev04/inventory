@@ -1,6 +1,6 @@
 import * as fb from './firebaseClient.js';
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from './cloudinary.js';
-import { saveImage, getImage } from './imageStore.js';
+import { getImage } from './imageStore.js';
 
 export async function getProducts(opts) {
   if (opts && opts.page) {
@@ -56,23 +56,25 @@ export async function createProduct(payload) {
   const created = await fb.getProduct(id);
   // Log transaction for product creation
   try {
+    const autoNotes = `${created?.name} was added to inventory with ${created?.quantity} units at ₱${Number(created?.price || 0).toFixed(2)} each`;
     await fb.createTransaction({
       type: 'product_create',
       productId: id,
       itemSku: created?.sku,
       supplier: created?.supplier,
       productName: created?.name,
+      category: created?.category,
       quantity: Number(created?.quantity || 0),
       unitPrice: Number(created?.price || 0),
       total: Number(created?.quantity || 0) * Number(created?.price || 0),
-      notes: 'Product created'
+      notes: autoNotes
     });
   } catch (e) { console.error('Failed to log product_create transaction', e); }
   return created;
 }
 
 // Helper function to upload images to Cloudinary (free tier)
-async function uploadProductImages(files, sku) {
+async function uploadProductImages(files) {
   const uploadedUrls = [];
   
   for (let i = 0; i < files.length; i++) {
@@ -210,6 +212,7 @@ export async function updateProduct(id, payload) {
       itemSku: updated?.sku || previous?.sku,
       supplier: updated?.supplier || previous?.supplier,
       productName: updated?.name || previous?.name,
+      category: updated?.category || previous?.category,
       quantity: newQty,
       quantityDiff: qtyDiff,
       unitPrice: newPrice,
@@ -243,16 +246,18 @@ export async function deleteProduct(id) {
   
   await fb.deleteProduct(id);
   try {
+    const autoNotes = `${existing?.name} was removed from inventory (had ${existing?.quantity} units at ₱${Number(existing?.price || 0).toFixed(2)} each)`;
     await fb.createTransaction({
       type: 'product_delete',
       productId: id,
       itemSku: existing?.sku,
       supplier: existing?.supplier,
       productName: existing?.name,
+      category: existing?.category,
       quantity: Number(existing?.quantity || 0),
       unitPrice: Number(existing?.price || 0),
       total: Number(existing?.quantity || 0) * Number(existing?.price || 0),
-      notes: 'Product deleted'
+      notes: autoNotes
     });
   } catch (e) { console.error('Failed to log product_delete transaction', e); }
   return { ok: true };

@@ -72,6 +72,18 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Validate all required fields
+    if (!formData.name || !formData.category || !formData.supplier || !formData.brand || !formData.description) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate at least one image
+    if (!formData.images || formData.images.length === 0) {
+      alert('Please upload at least one product image');
+      return;
+    }
+    
     console.log('AddProductDialog - handleSubmit');
     console.log('formData:', formData);
     console.log('formData.images:', formData.images);
@@ -202,23 +214,25 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Brand
+                Brand *
               </label>
               <Input
+                required
                 value={formData.brand}
                 onChange={(e) => handleChange("brand", e.target.value)}
-                placeholder="Enter product brand (optional)"
+                placeholder="Enter product brand"
               />
             </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
+                Description *
               </label>
               <Textarea
+                required
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter product description (optional)"
+                placeholder="Enter product description"
                 rows={3}
               />
             </div>
@@ -269,7 +283,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
             {/* Image Upload */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Product Images
+                Product Images *
               </label>
               <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
                 <input

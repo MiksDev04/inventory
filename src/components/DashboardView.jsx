@@ -3,7 +3,7 @@ import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock }
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
-import { getProducts, getCategories, getSuppliers, generateStockNotifications } from "../lib/api";
+import { getProducts, getCategories, getSuppliers } from "../lib/api";
 
 export default function Dashboard({ products: initialProducts, categories: initialCategories, suppliers: initialSuppliers }) {
   const [products, setProducts] = useState(initialProducts || []);
@@ -45,7 +45,7 @@ export default function Dashboard({ products: initialProducts, categories: initi
       })();
       return () => { mounted = false };
     }
-  }, []);
+  }, [initialProducts, initialCategories, initialSuppliers]);
 
   const totalProducts = (products || []).reduce((sum, product) => sum + (Number(product.quantity) || 0), 0);
   const totalCategories = categoriesList.length;

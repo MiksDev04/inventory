@@ -131,6 +131,18 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Validate all required fields
+    if (!formData.name || !formData.category || !formData.supplier || !formData.brand || !formData.description) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate at least one image (existing or new)
+    if ((!existingImagePaths || existingImagePaths.length === 0) && (!newImages || newImages.length === 0)) {
+      alert('Please upload at least one product image');
+      return;
+    }
+    
     console.log('[EditProductDialog] Form submitted!');
     console.log('[EditProductDialog] formData:', formData);
     console.log('[EditProductDialog] existingImagePaths:', existingImagePaths);
@@ -273,23 +285,25 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Brand
+                Brand *
               </label>
               <Input
+                required
                 value={formData.brand}
                 onChange={(e) => handleChange("brand", e.target.value)}
-                placeholder="Enter product brand (optional)"
+                placeholder="Enter product brand"
               />
             </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
+                Description *
               </label>
               <Textarea
+                required
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter product description (optional)"
+                placeholder="Enter product description"
                 rows={3}
               />
             </div>

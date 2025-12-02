@@ -9,7 +9,6 @@ import api from '../lib/api';
 
 export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onNavigate }) {
   const [reports, setReports] = useState(initialReports);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [archiving, setArchiving] = useState(null);
   const [page, setPage] = useState(initialPagination.page);
@@ -146,14 +145,11 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
           <CardTitle>Reports</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
-            <div className="rounded-md border">
-              {error && (
-                <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">{error}</div>
-              )}
-              <Table>
+          <div className="rounded-md border">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded">{error}</div>
+            )}
+            <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Period</TableHead>
@@ -253,7 +249,6 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
                 </div>
               </div>
             </div>
-          )}
         </CardContent>
       </Card>
 
