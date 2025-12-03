@@ -299,7 +299,7 @@ export function AnalyticsView(props) {
             <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">₱{totalValue.toLocaleString()}</div>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">₱{totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-green-600 dark:text-green-500 mt-1">+15.2% from last month</p>
           </CardContent>
         </Card>
@@ -310,7 +310,7 @@ export function AnalyticsView(props) {
             <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">₱{avgProductValue.toFixed(2)}</div>
+            <div className="text-2xl text-gray-900 dark:text-gray-100">₱{avgProductValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">Per product</p>
           </CardContent>
         </Card>

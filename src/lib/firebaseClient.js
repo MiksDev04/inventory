@@ -493,6 +493,24 @@ export function subscribeToReports(callback, includeArchived = false) {
   return unsubscribe;
 }
 
+// Real-time listener for notifications
+export function subscribeToNotifications(callback, userId = null) {
+  let q;
+  if (userId) {
+    q = query(collection(db, 'notifications'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+  } else {
+    q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
+  }
+  
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const res = [];
+    snapshot.forEach(d => res.push(docData(d)));
+    callback(res);
+  });
+  
+  return unsubscribe;
+}
+
 export default {
   // products
   listProducts,
@@ -530,6 +548,7 @@ export default {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  subscribeToNotifications,
   // reports
   listReports,
   createReport,

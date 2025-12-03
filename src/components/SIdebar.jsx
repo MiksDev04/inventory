@@ -5,6 +5,7 @@ import { useTheme } from "./ThemeProvider";
 import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import NotificationModal from "./NotificationModal";
+import * as fb from "../lib/firebaseClient";
 import { getUnreadCount } from "../lib/api";
 
 const menuItems = [
@@ -30,21 +31,18 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const sidebarRef = useRef(null);
 
-  // Fetch unread count on mount and periodically
+  // Subscribe to notifications for real-time unread count updates
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const { count } = await getUnreadCount();
-        setUnreadCount(count);
-      } catch (error) {
-        console.error("Failed to fetch unread count:", error);
-      }
-    };
+    const unsubscribe = fb.subscribeToNotifications((notifications) => {
+      // Count unread notifications - check both field name variations
+      const unread = notifications.filter(n => {
+        const isRead = n.isRead || n.is_read || false;
+        return !isRead;
+      }).length;
+      setUnreadCount(unread);
+    });
 
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
-
-    return () => clearInterval(interval);
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

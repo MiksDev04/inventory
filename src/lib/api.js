@@ -330,7 +330,7 @@ export async function checkProductStockNotification(productId, userId) {
         ? `Product "${product.name}" (SKU: ${product.sku}) is currently out of stock. Please reorder immediately.`
         : `Product "${product.name}" (SKU: ${product.sku}) has only ${qty} units left (minimum: ${minQ}). Consider restocking soon.`;
       
-      // Always create a new notification to track product movement
+      // Create notification immediately
       return await fb.createNotification({ 
         userId, 
         type, 

@@ -51,15 +51,59 @@ function App() {
   // Fetch initial data on mount for dashboard
   useEffect(() => {
     if (loggedIn) {
+      // Track previous product states to detect external changes
+      let previousProducts = new Map();
+      let productWasRestocked = new Set(); // Track which products were restocked
+      let isFirstLoad = true;
+      
       // Set up real-time listeners
       const unsubscribeProducts = fb.subscribeToProducts((products) => {
         setProducts(products);
-        // Check for low/out of stock notifications
-        if (products && products.length > 0) {
+        
+        // On first load (when opening the app), check all products for low/out of stock
+        if (isFirstLoad) {
+          isFirstLoad = false;
+          // Check all products that are currently low or out of stock
           api.checkAllProductsForNotifications().catch(e => 
-            console.error('Failed to check products for notifications', e)
+            console.error('Failed to check products on startup', e)
           );
         }
+        
+        // Auto-check for low/out of stock when products change (from POS/external systems)
+        products.forEach(product => {
+          const prevProduct = previousProducts.get(product.id);
+          
+          if (prevProduct) {
+            const prevQty = Number(prevProduct.quantity || 0);
+            const currentQty = Number(product.quantity || 0);
+            const minQty = Number(product.minQuantity || product.min_quantity || 0);
+            
+            // Check if product was restocked (quantity went from low to good)
+            const wasLow = prevQty < minQty || prevQty === 0;
+            const isGoodNow = currentQty >= minQty && currentQty > 0;
+            if (wasLow && isGoodNow) {
+              productWasRestocked.add(product.id);
+            }
+            
+            // Check if quantity decreased and is now low/out of stock
+            const isLowNow = currentQty === 0 || currentQty < minQty;
+            if (isLowNow) {
+              // Create notification if:
+              // 1. Quantity decreased from previous check, OR
+              // 2. Product was restocked and is now low again
+              if (currentQty < prevQty || productWasRestocked.has(product.id)) {
+                api.checkProductStockNotification(product.id).catch(e => 
+                  console.error('Failed to create stock notification', e)
+                );
+                // Clear restocked flag after creating notification
+                productWasRestocked.delete(product.id);
+              }
+            }
+          }
+          
+          // Update tracked state
+          previousProducts.set(product.id, { ...product });
+        });
       });
 
       const unsubscribeCategories = fb.subscribeToCategories((categories) => {
@@ -79,6 +123,11 @@ function App() {
         setReportsPagination(prev => ({ ...prev, total: reports.length }));
       });
 
+      // Subscribe to notifications for real-time updates
+      const unsubscribeNotifications = fb.subscribeToNotifications((notifications) => {
+        // Notifications updated in real-time, sidebar will auto-refresh unread count
+      });
+
       // Cleanup listeners on logout or unmount
       return () => {
         unsubscribeProducts();
@@ -86,6 +135,7 @@ function App() {
         unsubscribeSuppliers();
         unsubscribeTransactions();
         unsubscribeReports();
+        unsubscribeNotifications();
       };
     }
   }, [loggedIn]);
@@ -113,13 +163,7 @@ function App() {
     try {
       await api.updateProduct(productId, productData);
       showToast('Product updated successfully!', 'success');
-      
-      // Check only this specific product for stock notification
-      try {
-        await api.checkProductStockNotification(productId);
-      } catch (e) {
-        console.error('Failed to check stock notification', e);
-      }
+      // Real-time listener will handle notification creation automatically
     } catch (error) {
       console.error("Error updating product:", error);
       showToast('Failed to update product', 'error');
