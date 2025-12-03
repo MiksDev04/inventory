@@ -218,7 +218,7 @@ export default function TransactionsView({
                 notesText = t.notes || '';
               } else if (isUpdate) {
                 // Prefer detailed changes object if present
-                if (t.changes && typeof t.changes === 'object') {
+                if (t.changes && typeof t.changes === 'object' && Object.keys(t.changes).length > 0) {
                   const parts = Object.entries(t.changes).map(([key, val]) => {
                     const from = val && typeof val === 'object' ? val.from : undefined;
                     const to = val && typeof val === 'object' ? val.to : undefined;
@@ -226,24 +226,16 @@ export default function TransactionsView({
                     const fmt = (v) => {
                       if (v === null || v === undefined || v === '') return '-';
                       const n = Number(v);
-                      if (!Number.isNaN(n) && isPrice) return n.toFixed(2);
+                      if (!Number.isNaN(n) && isPrice) return `₱${n.toFixed(2)}`;
                       return String(v);
                     };
-                    return `${key}: ${fmt(from)} → ${fmt(to)}`;
+                    const keyLabel = key.charAt(0).toUpperCase() + key.slice(1);
+                    return `${keyLabel}: ${fmt(from)} → ${fmt(to)}`;
                   });
                   notesText = parts.join('; ');
                 } else {
-                  // Fallback to diffs summary
-                  const changes = [];
-                  const qd = Number(t.quantityDiff || t.quantity_diff);
-                  if (!Number.isNaN(qd) && qd !== 0) changes.push(`quantity: ${qd > 0 ? '+' : ''}${qd}`);
-                  const pd = Number(t.priceDiff || t.price_diff);
-                  if (!Number.isNaN(pd) && pd !== 0) changes.push(`price: ${pd > 0 ? '+' : ''}${pd.toFixed(2)}`);
-                  if (Array.isArray(t.changeFields || t.change_fields) && (t.changeFields || t.change_fields).length) {
-                    const others = (t.changeFields || t.change_fields).filter((f) => !['quantity', 'price'].includes(String(f)));
-                    if (others.length) changes.push(`fields: ${others.join(', ')}`);
-                  }
-                  notesText = changes.join('; ');
+                  // Fallback to notes or "No changes recorded"
+                  notesText = t.notes || 'Product updated';
                 }
               }
 
@@ -257,7 +249,15 @@ export default function TransactionsView({
                   }}
                 >
                   <TableCell className="whitespace-nowrap">{dateStr}</TableCell>
-                  <TableCell className="capitalize whitespace-nowrap">{String(t.type || "").toLowerCase()}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {(() => {
+                      const type = String(t.type || "").toLowerCase();
+                      if (type === 'product_create') return 'Create';
+                      if (type === 'product_update') return 'Update';
+                      if (type === 'product_delete') return 'Delete';
+                      return type.charAt(0).toUpperCase() + type.slice(1);
+                    })()}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{t.productName || t.product_name || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{t.itemSku || t.productSku || t.sku || "-"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{qty}</TableCell>
@@ -314,8 +314,14 @@ export default function TransactionsView({
 
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</label>
-                  <p className="text-base text-gray-900 dark:text-white mt-1 capitalize">
-                    {String(selectedTransaction.type || "N/A").replace(/_/g, ' ')}
+                  <p className="text-base text-gray-900 dark:text-white mt-1">
+                    {(() => {
+                      const type = String(selectedTransaction.type || "").toLowerCase();
+                      if (type === 'product_create') return 'Create';
+                      if (type === 'product_update') return 'Update';
+                      if (type === 'product_delete') return 'Delete';
+                      return type.charAt(0).toUpperCase() + type.slice(1) || 'N/A';
+                    })()}
                   </p>
                 </div>
 
