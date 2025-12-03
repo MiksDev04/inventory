@@ -258,7 +258,9 @@ export default function TransactionsView({
                       return type.charAt(0).toUpperCase() + type.slice(1);
                     })()}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{t.productName || t.product_name || "-"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={t.productName || t.product_name || "-"}>
+                    {t.productName || t.product_name || "-"}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{t.itemSku || t.productSku || t.sku || "-"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{qty}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{unit.toFixed(2)}</TableCell>

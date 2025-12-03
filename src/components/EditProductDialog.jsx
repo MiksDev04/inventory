@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Upload, Trash2 } from "lucide-react";
+import { X, Upload, Trash2, Plus, Minus } from "lucide-react";
 import { getImageUrl } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -23,6 +23,9 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
   const [imagePreviews, setImagePreviews] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [existingImagePaths, setExistingImagePaths] = useState([]);
+  const [quantityAdjustment, setQuantityAdjustment] = useState("");
+  const [adjustmentType, setAdjustmentType] = useState("add"); // "add" or "subtract"
+  const [originalQuantity, setOriginalQuantity] = useState(0);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -43,6 +46,9 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
           status: product.status || "in-stock",
           images: product.images || []
         });
+        setOriginalQuantity(product.quantity || 0);
+        setQuantityAdjustment("");
+        setAdjustmentType("add");
         // Set existing image previews (from stored paths)
         if (product.images && Array.isArray(product.images)) {
           console.log('[EditProductDialog] Loading existing images:', product.images.length);
@@ -143,7 +149,16 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       return;
     }
     
+    // Calculate final quantity based on adjustment
+    const finalQuantity = adjustmentType === "add" 
+      ? originalQuantity + (parseInt(quantityAdjustment) || 0)
+      : Math.max(0, originalQuantity - (parseInt(quantityAdjustment) || 0));
+    
     console.log('[EditProductDialog] Form submitted!');
+    console.log('[EditProductDialog] Original quantity:', originalQuantity);
+    console.log('[EditProductDialog] Adjustment type:', adjustmentType);
+    console.log('[EditProductDialog] Adjustment amount:', quantityAdjustment);
+    console.log('[EditProductDialog] Final quantity:', finalQuantity);
     console.log('[EditProductDialog] formData:', formData);
     console.log('[EditProductDialog] existingImagePaths:', existingImagePaths);
     console.log('[EditProductDialog] newImages:', newImages);
@@ -151,9 +166,9 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
     
     // Determine status based on quantity and minQuantity
     let status = "in-stock";
-    if (formData.quantity === 0) {
+    if (finalQuantity === 0) {
       status = "out-of-stock";
-    } else if (formData.quantity <= formData.minQuantity) {
+    } else if (finalQuantity <= formData.minQuantity) {
       status = "low-stock";
     }
 
@@ -166,7 +181,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       supplier: formData.supplier,
       brand: formData.brand,
       description: formData.description,
-      quantity: Number(formData.quantity),
+      quantity: finalQuantity,
       minQuantity: Number(formData.minQuantity),
       price: Number(formData.price),
       status,
@@ -311,28 +326,67 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Quantity *
+                  Current Quantity
                 </label>
                 <Input
                   type="number"
-                  required
-                  min="0"
-                  value={formData.quantity}
-                  onChange={(e) => handleChange("quantity", parseInt(e.target.value) || 0)}
+                  value={originalQuantity}
+                  disabled
+                  className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Min Quantity *
+                  Adjust Quantity
                 </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustmentType("add")}
+                    className={`flex-1 px-3 py-2 rounded border transition-colors ${
+                      adjustmentType === "add"
+                        ? "bg-green-500 text-white border-green-600"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900"
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 mx-auto" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustmentType("subtract")}
+                    className={`flex-1 px-3 py-2 rounded border transition-colors ${
+                      adjustmentType === "subtract"
+                        ? "bg-red-500 text-white border-red-600"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900"
+                    }`}
+                  >
+                    <Minus className="w-4 h-4 mx-auto" />
+                  </button>
+                </div>
                 <Input
                   type="number"
-                  required
                   min="0"
-                  value={formData.minQuantity}
-                  onChange={(e) => handleChange("minQuantity", parseInt(e.target.value) || 0)}
+                  value={quantityAdjustment}
+                  onChange={(e) => setQuantityAdjustment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+                      e.preventDefault();
+                    }
+                  }}
+                  placeholder="0"
+                  className="mt-2"
                 />
+                <div className={`text-sm font-medium ${
+                  adjustmentType === "add" ? "text-green-600" : "text-red-600"
+                }`}>
+                  {adjustmentType === "add" ? "+" : "-"}{quantityAdjustment || 0} units
+                  {" → New: "}
+                  {adjustmentType === "add" 
+                    ? originalQuantity + (parseInt(quantityAdjustment) || 0)
+                    : Math.max(0, originalQuantity - (parseInt(quantityAdjustment) || 0))
+                  }
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -347,6 +401,21 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                   value={formData.price}
                   onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Min Quantity *
+                </label>
+                <Input
+                  type="number"
+                  required
+                  min="0"
+                  value={formData.minQuantity}
+                  onChange={(e) => handleChange("minQuantity", parseInt(e.target.value) || 0)}
                 />
               </div>
             </div>

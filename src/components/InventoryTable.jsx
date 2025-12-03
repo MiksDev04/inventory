@@ -161,7 +161,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                           <span className="text-xs text-gray-500 dark:text-gray-400">Min: {Number(product.minQuantity) || 0}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-900 dark:text-gray-100">₱{(Number(product.price) || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">₱{(Number(product.price) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">{product.supplier}</TableCell>
                       <TableCell>{getStatusBadge(calculateStatus(product))}</TableCell>
                       <TableCell className="text-gray-900 dark:text-gray-100">{product.lastUpdated}</TableCell>

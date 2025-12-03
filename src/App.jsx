@@ -292,7 +292,7 @@ function App() {
                   marginLeft: sidebarWidth
                 }}
               >
-          {currentView === 'dashboard' && <Dashboard products={products} categories={categories} suppliers={suppliers} />}
+          {currentView === 'dashboard' && <Dashboard products={products} categories={categories} suppliers={suppliers} onNavigate={setCurrentView} />}
           {currentView === 'inventory' && (
             <InventoryView
               products={products}

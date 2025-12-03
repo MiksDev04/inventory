@@ -71,8 +71,8 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
       'Stock Change',
       'Total Value',
       'Value Change %',
-      'Products Added',
-      'Products Removed',
+      'Units Added',
+      'Units Removed',
       'Products Updated',
       'Total Transactions',
       'Avg Daily Transactions',
@@ -157,8 +157,8 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
                     <TableHead>Days</TableHead>
                     <TableHead>Total Stock</TableHead>
                     <TableHead>Total Value</TableHead>
-                    <TableHead>Changes</TableHead>
-                    <TableHead>Activities</TableHead>
+                    <TableHead>Stock Movement</TableHead>
+                    <TableHead>Transactions</TableHead>
                     <TableHead>Stock Issues</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -193,15 +193,20 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {r.productsAdded !== undefined ? (
-                          <div>
-                            <div className="text-green-600 dark:text-green-500">+{r.productsAdded || 0} added</div>
-                            <div className="text-red-600 dark:text-red-500">-{r.productsRemoved || 0} removed</div>
-                            <div className="text-blue-600 dark:text-blue-500">{r.productsUpdated || 0} updated</div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">N/A</span>
-                        )}
+                        <div className="space-y-1">
+                          {r.productsAdded > 0 && (
+                            <div className="text-green-600 dark:text-green-500">+{r.productsAdded} created</div>
+                          )}
+                          {r.productsRemoved > 0 && (
+                            <div className="text-red-600 dark:text-red-500">-{r.productsRemoved} deleted</div>
+                          )}
+                          {r.productsUpdated > 0 && (
+                            <div className="text-blue-600 dark:text-blue-500">{r.productsUpdated} updated</div>
+                          )}
+                          {!r.productsAdded && !r.productsRemoved && !r.productsUpdated && (
+                            <span className="text-gray-400">No changes</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         <div>{r.totalTransactions || 0} total</div>

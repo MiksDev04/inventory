@@ -516,7 +516,9 @@ export async function createReport(reportData) {
   // Get transactions within the period
   const transactions = await (fb.listTransactions ? fb.listTransactions() : []);
   const startDate = new Date(reportData.startDate);
+  startDate.setHours(0, 0, 0, 0); // Start of day
   const endDate = new Date(reportData.endDate);
+  endDate.setHours(23, 59, 59, 999); // End of day
   
   const periodTransactions = transactions.filter(t => {
     const tDate = new Date(t.createdAt || t.date || 0);
@@ -525,12 +527,14 @@ export async function createReport(reportData) {
   
   // Calculate period-specific metrics
   const totalTransactions = periodTransactions.length;
+  
+  // Count number of products created/deleted (not quantity)
   const productsAdded = periodTransactions
     .filter(t => t.type === 'product_create')
-    .reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+    .length;
   const productsRemoved = periodTransactions
     .filter(t => t.type === 'product_delete')
-    .reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+    .length;
   const productsUpdated = periodTransactions
     .filter(t => t.type === 'product_update')
     .length;

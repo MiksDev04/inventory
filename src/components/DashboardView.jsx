@@ -5,7 +5,7 @@ import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
 import { getProducts, getCategories, getSuppliers } from "../lib/api";
 
-export default function Dashboard({ products: initialProducts, categories: initialCategories, suppliers: initialSuppliers }) {
+export default function Dashboard({ products: initialProducts, categories: initialCategories, suppliers: initialSuppliers, onNavigate }) {
   const [products, setProducts] = useState(initialProducts || []);
   const [categoriesList, setCategoriesList] = useState(initialCategories || []);
   const [suppliersList, setSuppliersList] = useState(initialSuppliers || []);
@@ -85,21 +85,25 @@ export default function Dashboard({ products: initialProducts, categories: initi
           <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Total Products</CardTitle>
-              <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalProducts.toLocaleString()}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Across {products.length} products
-              </p>
-              <Progress value={75} className="mt-3 h-2" />
-            </CardContent>
-          </Card>
+          <div 
+            className="cursor-pointer transition-transform"
+            onClick={() => onNavigate('inventory')}
+          >
+            <Card className="h-full hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm">Total Products</CardTitle>
+                <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalProducts.toLocaleString()}</div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Across {products.length} products • Click to view
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
+          <Card className="h-full hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm">Total Value</CardTitle>
               <PesoIcon className="w-4 h-4 text-green-600 dark:text-green-500" />
@@ -107,14 +111,16 @@ export default function Dashboard({ products: initialProducts, categories: initi
             <CardContent>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">₱{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                +12.5% from last month
+                Total inventory value
               </p>
-              <Progress value={85} className="mt-3 h-2" />
             </CardContent>
           </Card>
 
-          <Card>
-            <Card>
+          <div 
+            className="cursor-pointer  transition-transform"
+            onClick={() => onNavigate('categories')}
+          >
+            <Card className="h-full hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm">Total Categories</CardTitle>
                 <TrendingDown className="w-4 h-4 text-orange-600 dark:text-orange-500" />
@@ -122,26 +128,29 @@ export default function Dashboard({ products: initialProducts, categories: initi
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCategories}</div>
                 <p className="text-xs text-orange-600 dark:text-orange-500 mt-1">
-                  Distinct categories
+                  Distinct categories • Click to view
                 </p>
-                <Progress value={40} className="mt-3 h-2 [&>div]:bg-orange-500" />
               </CardContent>
             </Card>
-          </Card>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Total Suppliers</CardTitle>
-              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSuppliers}</div>
-              <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                Registered suppliers
-              </p>
-              <Progress value={60} className="mt-3 h-2 [&>div]:bg-red-500" />
-            </CardContent>
-          </Card>
+          <div 
+            className="cursor-pointer transition-transform"
+            onClick={() => onNavigate('suppliers')}
+          >
+            <Card className="h-full hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm">Total Suppliers</CardTitle>
+                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSuppliers}</div>
+                <p className="text-xs text-red-600 dark:text-red-500 mt-1">
+                  Registered suppliers • Click to view
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
