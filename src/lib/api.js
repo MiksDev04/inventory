@@ -315,16 +315,28 @@ export async function checkProductStockNotification(productId, userId) {
       userId = users && users.length > 0 ? users[0].id : '1';
     }
     
+    // Get settings to check if notifications are enabled
+    const settings = await fb.getSettings();
+    const notifSettings = settings.notifications || { lowStock: true, outOfStock: true };
+    
     // Get the specific product
     const product = await fb.getProduct(productId);
     if (!product) return null;
     
     const qty = Number(product.quantity || 0);
-    const minQ = Number(product.min_quantity || product.minQuantity || 0);
+    // Use product's minQuantity, or fall back to system setting
+    const minQ = Number(product.min_quantity || product.minQuantity || settings.system?.lowStockThreshold || 20);
     
     // Check if product is low/out of stock and create notification
     if (qty === 0 || qty < minQ) {
       const type = qty === 0 ? 'out_of_stock' : 'low_stock';
+      
+      // Only create notification if that type is enabled in settings
+      if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
+          (type === 'low_stock' && !notifSettings.lowStock)) {
+        return null; // Notification disabled for this type
+      }
+      
       const title = qty === 0 ? `${product.name} is out of stock` : `${product.name} is running low`;
       const message = qty === 0
         ? `Product "${product.name}" (SKU: ${product.sku}) is currently out of stock. Please reorder immediately.`
@@ -356,6 +368,11 @@ export async function checkAllProductsForNotifications(userId) {
       userId = users && users.length > 0 ? users[0].id : '1';
     }
     
+    // Get settings to check if notifications are enabled
+    const settings = await fb.getSettings();
+    const notifSettings = settings.notifications || { lowStock: true, outOfStock: true };
+    const systemThreshold = settings.system?.lowStockThreshold || 20;
+    
     // Get all products and existing notifications
     const products = await fb.listProducts();
     const existingNotifications = await fb.listNotificationsForUser(userId);
@@ -374,11 +391,19 @@ export async function checkAllProductsForNotifications(userId) {
     
     for (const product of products) {
       const qty = Number(product.quantity || 0);
-      const minQ = Number(product.min_quantity || product.minQuantity || 0);
+      // Use product's minQuantity, or fall back to system setting
+      const minQ = Number(product.min_quantity || product.minQuantity || systemThreshold);
       
       // Only create notification if product is low/out of stock
       if (qty === 0 || qty < minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
+        
+        // Only create notification if that type is enabled in settings
+        if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
+            (type === 'low_stock' && !notifSettings.lowStock)) {
+          continue; // Skip this notification
+        }
+        
         const key = `${product.id}_${type}`;
         
         // Check if there's already a notification for this product with this type
@@ -444,6 +469,11 @@ export async function generateStockNotifications(userId) {
       userId = users && users.length > 0 ? users[0].id : '1';
     }
     
+    // Get settings for threshold and notification preferences
+    const settings = await fb.getSettings();
+    const notifSettings = settings.notifications || { lowStock: true, outOfStock: true };
+    const systemThreshold = settings.system?.lowStockThreshold || 20;
+    
     // Get existing notifications to avoid duplicates
     const existingNotifications = await fb.listNotificationsForUser(userId);
     const notifsByProduct = existingNotifications
@@ -460,11 +490,19 @@ export async function generateStockNotifications(userId) {
     const created = [];
     for (const p of products) {
       const qty = Number(p.quantity || 0);
-      const minQ = Number(p.min_quantity || p.minQuantity || 0);
+      // Use product's minQuantity, or fall back to system setting
+      const minQ = Number(p.min_quantity || p.minQuantity || systemThreshold);
       
       // Check if product needs a notification
       if (qty === 0 || qty < minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
+        
+        // Only create notification if that type is enabled in settings
+        if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
+            (type === 'low_stock' && !notifSettings.lowStock)) {
+          continue; // Skip this notification
+        }
+        
         const title = qty === 0 ? `${p.name} is out of stock` : `${p.name} is running low`;
         const message = qty === 0
           ? `Product "${p.name}" (SKU: ${p.sku}) is currently out of stock. Please reorder immediately.`
@@ -504,11 +542,16 @@ export async function createReport(reportData) {
   // Get current products to calculate stats
   const products = await fb.listProducts();
   
+  // Get system settings for threshold
+  const settings = await fb.getSettings();
+  const systemThreshold = settings.system?.lowStockThreshold || 20;
+  
   const totalProducts = products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
   const totalValue = products.reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.price) || 0)), 0);
   const lowStockCount = products.filter(p => {
     const qty = Number(p.quantity) || 0;
-    const minQty = Number(p.min_quantity || p.minQuantity) || 0;
+    // Use product's minQuantity, or fall back to system setting
+    const minQty = Number(p.min_quantity || p.minQuantity || systemThreshold);
     return qty > 0 && qty <= minQty;
   }).length;
   const outOfStockCount = products.filter(p => (Number(p.quantity) || 0) === 0).length;
@@ -664,16 +707,12 @@ export async function updateProfile(payload, userId) {
 }
 
 export async function changePassword(payload, userId) {
-  // TEMPORARY: For hardcoded admin account
-  if (payload.currentPassword === '123456') {
-    // Simulate successful password change for hardcoded account
-    console.log('Password change simulated for hardcoded admin account');
-    return { success: true };
-  }
+  console.log('changePassword called with userId:', userId);
   
   if (!userId) {
     // Get the first user's ID
     const users = await fb.listUsers();
+    console.log('Fetched users for password change:', users);
     if (users && users.length > 0) {
       userId = users[0].id;
     }
@@ -683,14 +722,19 @@ export async function changePassword(payload, userId) {
     throw new Error('No user found');
   }
   
+  console.log('Getting user by ID:', userId);
   // Get current user to verify password
   const currentUser = await fb.getUserById(String(userId));
+  console.log('Current user from DB:', currentUser);
+  
   if (!currentUser) {
     throw new Error('User not found');
   }
   
   // Verify current password against hashed value
+  console.log('Verifying current password...');
   const isValid = await fb.comparePassword(payload.currentPassword, currentUser.password_hash);
+  console.log('Password verification result:', isValid);
   
   if (!isValid) {
     throw new Error('incorrect_current_password');
@@ -702,8 +746,10 @@ export async function changePassword(payload, userId) {
   }
   
   // Hash and update password
+  console.log('Hashing new password and updating user...');
   const hashed = await fb.hashPassword(payload.newPassword);
   await fb.updateUser(String(userId), { password_hash: hashed });
+  console.log('Password updated successfully');
   return { success: true };
 }
 
@@ -717,6 +763,15 @@ export async function login({ username, password }) {
 // Cleanup utility
 export async function cleanupOldFields() {
   return fb.cleanupOldTimestampFields();
+}
+
+// Settings
+export async function getSettings() {
+  return fb.getSettings();
+}
+
+export async function updateSettings(settings) {
+  return fb.updateSettings(settings);
 }
 
 export default {

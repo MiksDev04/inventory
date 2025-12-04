@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
+import * as api from '../lib/api';
 
 export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers = [] }) {
   const [formData, setFormData] = useState({
@@ -20,15 +21,30 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
     images: []
   });
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [defaultMinQuantity, setDefaultMinQuantity] = useState(20);
+
+  // Load system settings to get default low stock threshold
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await api.getSettings();
+        const threshold = settings.system?.lowStockThreshold || 20;
+        setDefaultMinQuantity(threshold);
+      } catch (e) {
+        console.error('Failed to load system settings', e);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Auto-generate SKU when dialog opens
   useEffect(() => {
     if (isOpen) {
       const generatedSku = `SKU-${Date.now()}`;
-      setFormData(prev => ({ ...prev, sku: generatedSku }));
+      setFormData(prev => ({ ...prev, sku: generatedSku, minQuantity: defaultMinQuantity }));
       setImagePreviews([]);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultMinQuantity]);
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -272,7 +288,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
                       e.preventDefault();
                     }
                   }}
-                  placeholder="0"
+                  placeholder={defaultMinQuantity.toString()}
                 />
               </div>
 

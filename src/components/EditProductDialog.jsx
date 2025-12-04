@@ -38,8 +38,8 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
           sku: product.sku || "",
           category: product.category || "",
           quantity: product.quantity || 0,
-          minQuantity: product.minQuantity || 0,
-          price: product.price || 0,
+          minQuantity: product.minQuantity || "",
+          price: product.price || "",
           supplier: product.supplier || "",
           brand: product.brand || "",
           description: product.description || "",
@@ -229,7 +229,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                   required
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="Enter product name"
+                  placeholder={product?.name || "Enter product name"}
                 />
               </div>
 
@@ -241,7 +241,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                   required
                   value={formData.sku}
                   onChange={(e) => handleChange("sku", e.target.value)}
-                  placeholder="Enter SKU"
+                  placeholder={product?.sku || "Enter SKU"}
                   disabled
                   className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60"
                 />
@@ -306,7 +306,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                 required
                 value={formData.brand}
                 onChange={(e) => handleChange("brand", e.target.value)}
-                placeholder="Enter product brand"
+                placeholder={product?.brand || "Enter product brand"}
               />
             </div>
 
@@ -318,7 +318,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                 required
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter product description"
+                placeholder={product?.description || "Enter product description"}
                 rows={3}
               />
             </div>
@@ -399,8 +399,13 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                   required
                   min="0"
                   value={formData.price}
-                  onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
+                  onChange={(e) => handleChange("price", parseFloat(e.target.value) || "")}
+                  placeholder={product?.price ? product.price.toString() : "0.00"}
+                  onKeyDown={(e) => {
+                    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -415,7 +420,13 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                   required
                   min="0"
                   value={formData.minQuantity}
-                  onChange={(e) => handleChange("minQuantity", parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleChange("minQuantity", parseInt(e.target.value) || "")}
+                  placeholder={product?.minQuantity ? product.minQuantity.toString() : "0"}
+                  onKeyDown={(e) => {
+                    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>

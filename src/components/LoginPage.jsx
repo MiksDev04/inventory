@@ -20,17 +20,17 @@ export default function LoginPage({ onLogin }) {
     
     try {
       // TEMPORARY: Hardcoded dummy account for testing
-      if (username === 'admin' && password === '123456') {
-        setError("");
-        onLogin && onLogin({ 
-          username: 'admin', 
-          role: 'admin', 
-          full_name: 'Justin Batista',
-          email: 'admin@example.com'
-        });
-        setLoading(false);
-        return;
-      }
+      // if (username === 'admin' && password === '123456') {
+      //   setError("");
+      //   onLogin && onLogin({ 
+      //     username: 'admin', 
+      //     role: 'admin', 
+      //     full_name: 'Justin Batista',
+      //     email: 'admin@example.com'
+      //   });
+      //   setLoading(false);
+      //   return;
+      // }
       
       const res = await api.login({ username, password });
       if (res && res.success) {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import * as api from '../lib/api';
-import { Settings, Bell, Lock, User, Database } from "lucide-react";
+import { Settings, Bell, Lock, User, Database, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
@@ -9,9 +9,11 @@ import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
 import { Toast } from './Toast';
+import * as XLSX from 'xlsx';
 
 export function SettingsView() {
   const [profile, setProfile] = useState({
+    id: '',
     username: '',
     fullName: '',
     email: "",
@@ -33,9 +35,7 @@ export function SettingsView() {
   });
 
   const [system, setSystem] = useState({
-    autoBackup: true,
-    lowStockThreshold: 20,
-    currency: "PHP (₱)"
+    lowStockThreshold: 20
   });
 
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -44,6 +44,8 @@ export function SettingsView() {
   // separate saving states so updating password doesn't block profile save UI
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingSystem, setSavingSystem] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [passwordChangedOpen, setPasswordChangedOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
   const mountedRef = useRef(true);
@@ -70,6 +72,7 @@ export function SettingsView() {
       }
       
       const profileData = {
+        id: p.id || '',
         username: p.username || '',
         fullName: p.fullName || p.full_name || '',
         email: p.email || '',
@@ -92,6 +95,24 @@ export function SettingsView() {
   useEffect(() => {
     mountedRef.current = true;
     fetchProfile();
+    
+    // Load settings from Firestore
+    const loadSettings = async () => {
+      try {
+        const settings = await api.getSettings();
+        if (settings.notifications) {
+          setNotifications(settings.notifications);
+        }
+        if (settings.system) {
+          setSystem(settings.system);
+        }
+      } catch (e) {
+        console.error('Failed to load settings', e);
+      }
+    };
+    
+    loadSettings();
+    
     return () => { mountedRef.current = false };
   }, []);
 
@@ -163,9 +184,10 @@ export function SettingsView() {
     }
 
     try {
-      console.log('Attempting password change for user');
+      console.log('Attempting password change for user ID:', profile.id);
+      console.log('Profile state:', profile);
       setSavingPassword(true);
-      const res = await api.changePassword({ currentPassword: security.currentPassword, newPassword: security.newPassword });
+      const res = await api.changePassword({ currentPassword: security.currentPassword, newPassword: security.newPassword }, profile.id);
       if (res && res.success) {
         // clear the password inputs as a visible indication
         setSecurity({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -191,9 +213,101 @@ export function SettingsView() {
 
   // Note: confirmation modal is opened immediately; validation happens on confirm
 
-  const handleSystemSave = () => {
-    localStorage.setProduct("systemSettings", JSON.stringify(system));
-    showToast('System settings updated successfully!', 'success');
+  const handleSystemSave = async () => {
+    setSavingSystem(true);
+    try {
+      await api.updateSettings({ notifications, system });
+      showToast('System settings updated successfully!', 'success');
+    } catch (e) {
+      console.error('Failed to save system settings', e);
+      showToast('Failed to save system settings', 'error');
+    } finally {
+      setSavingSystem(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    try {
+      // Fetch all data
+      const [products, categories, suppliers, transactions] = await Promise.all([
+        api.getProducts(),
+        api.getCategories(),
+        api.getSuppliers(),
+        api.listTransactions ? api.listTransactions() : Promise.resolve([])
+      ]);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Products sheet
+      const productsData = products.map(p => ({
+        SKU: p.sku || '',
+        Name: p.name || '',
+        Brand: p.brand || '',
+        Category: p.category || '',
+        Supplier: p.supplier || '',
+        Quantity: p.quantity || 0,
+        'Min Quantity': p.minQuantity || p.min_quantity || 0,
+        'Price (₱)': p.price || 0,
+        Status: p.status || '',
+        Description: p.description || '',
+        'Created At': p.createdAt ? new Date(p.createdAt).toLocaleString() : '',
+        'Updated At': p.updatedAt ? new Date(p.updatedAt).toLocaleString() : ''
+      }));
+      const wsProducts = XLSX.utils.json_to_sheet(productsData);
+      XLSX.utils.book_append_sheet(wb, wsProducts, 'Products');
+
+      // Categories sheet
+      const categoriesData = categories.map(c => ({
+        Name: c.name || '',
+        Description: c.description || '',
+        'Created At': c.createdAt ? new Date(c.createdAt).toLocaleString() : '',
+        'Updated At': c.updatedAt ? new Date(c.updatedAt).toLocaleString() : ''
+      }));
+      const wsCategories = XLSX.utils.json_to_sheet(categoriesData);
+      XLSX.utils.book_append_sheet(wb, wsCategories, 'Categories');
+
+      // Suppliers sheet
+      const suppliersData = suppliers.map(s => ({
+        Name: s.name || '',
+        Contact: s.contact || '',
+        Email: s.email || '',
+        Address: s.address || '',
+        'Created At': s.createdAt ? new Date(s.createdAt).toLocaleString() : '',
+        'Updated At': s.updatedAt ? new Date(s.updatedAt).toLocaleString() : ''
+      }));
+      const wsSuppliers = XLSX.utils.json_to_sheet(suppliersData);
+      XLSX.utils.book_append_sheet(wb, wsSuppliers, 'Suppliers');
+
+      // Transactions sheet
+      if (transactions && transactions.length > 0) {
+        const transactionsData = transactions.map(t => ({
+          Type: t.type || '',
+          'Product SKU': t.itemSku || t.item_sku || '',
+          'Product Name': t.productName || t.product_name || '',
+          Quantity: t.quantity || 0,
+          Price: t.price || 0,
+          Date: t.createdAt ? new Date(t.createdAt).toLocaleString() : (t.date ? new Date(t.date).toLocaleString() : '')
+        }));
+        const wsTransactions = XLSX.utils.json_to_sheet(transactionsData);
+        XLSX.utils.book_append_sheet(wb, wsTransactions, 'Transactions');
+      }
+
+      // Generate filename with current date
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `Inventory_Backup_${timestamp}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+      
+      showToast('Backup downloaded successfully!', 'success');
+    } catch (e) {
+      console.error('Failed to download backup', e);
+      showToast('Failed to download backup', 'error');
+    } finally {
+      setDownloadingBackup(false);
+    }
   };
 
   return (
@@ -302,10 +416,18 @@ export function SettingsView() {
               </div>
               <Switch 
                 checked={notifications.lowStock}
-                onCheckedChange={(checked) => {
+                onCheckedChange={async (checked) => {
                   const newNotifications = { ...notifications, lowStock: checked };
                   setNotifications(newNotifications);
-                  localStorage.setProduct("notificationSettings", JSON.stringify(newNotifications));
+                  try {
+                    await api.updateSettings({ notifications: newNotifications, system });
+                    showToast(`Low stock alerts ${checked ? 'enabled' : 'disabled'}`, 'success');
+                  } catch (e) {
+                    console.error('Failed to save notification settings', e);
+                    showToast('Failed to save notification settings', 'error');
+                    // Revert on error
+                    setNotifications(notifications);
+                  }
                 }}
               />
             </div>
@@ -317,10 +439,18 @@ export function SettingsView() {
               </div>
               <Switch 
                 checked={notifications.outOfStock}
-                onCheckedChange={(checked) => {
+                onCheckedChange={async (checked) => {
                   const newNotifications = { ...notifications, outOfStock: checked };
                   setNotifications(newNotifications);
-                  localStorage.setProduct("notificationSettings", JSON.stringify(newNotifications));
+                  try {
+                    await api.updateSettings({ notifications: newNotifications, system });
+                    showToast(`Out of stock alerts ${checked ? 'enabled' : 'disabled'}`, 'success');
+                  } catch (e) {
+                    console.error('Failed to save notification settings', e);
+                    showToast('Failed to save notification settings', 'error');
+                    // Revert on error
+                    setNotifications(notifications);
+                  }
                 }}
               />
             </div>
@@ -421,37 +551,20 @@ export function SettingsView() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-gray-900 dark:text-gray-100">Auto-backup</Label>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Automatically backup inventory data daily</p>
-              </div>
-              <Switch 
-                checked={system.autoBackup}
-                onCheckedChange={(checked) => setSystem({ ...system, autoBackup: checked })}
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
                 <Label className="text-gray-900 dark:text-gray-100">Low Stock Threshold</Label>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Default minimum quantity alert level</p>
               </div>
               <Input 
                 type="number" 
                 value={system.lowStockThreshold}
-                onChange={(e) => setSystem({ ...system, lowStockThreshold: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setSystem({ ...system, lowStockThreshold: parseInt(e.target.value) || "" })}
+                placeholder="0"
                 className="w-20" 
               />
             </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Input 
-                id="currency" 
-                value={system.currency}
-                onChange={(e) => setSystem({ ...system, currency: e.target.value })}
-              />
-            </div>
-            <Button onClick={handleSystemSave}>Save System Settings</Button>
+            <Button onClick={handleSystemSave} disabled={savingSystem}>
+              {savingSystem ? 'Saving...' : 'Save System Settings'}
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -323,10 +323,20 @@ export async function createUser(payload) {
 
 export async function updateUser(id, payload) {
   const p = { ...payload };
+  const docRef = doc(db, 'inventory_users', String(id));
+  
+  // Handle password hashing
   if (p.password) {
     p.passwordHash = await hashPassword(p.password);
     delete p.password;
   }
+  
+  // Handle password_hash (already hashed) - convert to camelCase
+  if (p.password_hash) {
+    p.passwordHash = p.password_hash;
+    delete p.password_hash;
+  }
+  
   // Normalize to camelCase for consistency with Firebase
   if (p.full_name) {
     p.fullName = p.full_name;
@@ -336,7 +346,14 @@ export async function updateUser(id, payload) {
     p.isActive = p.is_active;
     delete p.is_active;
   }
-  await updateDoc(doc(db, 'inventory_users', String(id)), { ...p, updatedAt: serverTimestamp() });
+  
+  // Update the document
+  await updateDoc(docRef, { ...p, updatedAt: serverTimestamp() });
+  
+  // Explicitly remove old snake_case password_hash field if passwordHash was set
+  if (p.passwordHash) {
+    await updateDoc(docRef, { password_hash: deleteField() });
+  }
 }
 
 export async function verifyLogin(username, password) {
@@ -695,6 +712,57 @@ export async function cleanupOldTimestampFields() {
   
   console.log(`Cleanup complete! Updated ${totalUpdated} documents.`);
   return totalUpdated;
+}
+
+// --- Settings functions ---
+export async function getSettings() {
+  const snap = await getDocs(collection(db, 'inventory_settings'));
+  if (snap.empty) {
+    // Return default settings if none exist
+    return {
+      notifications: {
+        lowStock: true,
+        outOfStock: true
+      },
+      system: {
+        lowStockThreshold: 20
+      }
+    };
+  }
+  
+  // Get the first document (should only be one)
+  const doc = snap.docs[0];
+  const data = docData(doc);
+  
+  return {
+    id: data.id,
+    notifications: data.notifications || { lowStock: true, outOfStock: true },
+    system: data.system || { lowStockThreshold: 20 }
+  };
+}
+
+export async function updateSettings(settings) {
+  const snap = await getDocs(collection(db, 'inventory_settings'));
+  
+  const payload = {
+    notifications: settings.notifications,
+    system: settings.system,
+    updatedAt: serverTimestamp()
+  };
+  
+  if (snap.empty) {
+    // Create new settings document
+    const docRef = await addDoc(collection(db, 'inventory_settings'), {
+      ...payload,
+      createdAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...settings };
+  } else {
+    // Update existing settings document
+    const docId = snap.docs[0].id;
+    await updateDoc(doc(db, 'inventory_settings', docId), payload);
+    return { id: docId, ...settings };
+  }
 }
 
 // (removed duplicate default export)
