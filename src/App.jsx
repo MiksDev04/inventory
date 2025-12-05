@@ -82,13 +82,13 @@ function App() {
             
             const currentQty = Number(product.quantity || 0);
             const minQty = Number(product.minQuantity || product.min_quantity || 0);
-            const isLowNow = currentQty === 0 || currentQty < minQty;
+            const isLowNow = currentQty === 0 || currentQty <= minQty;
             
             if (prevProduct) {
               const prevQty = Number(prevProduct.quantity || 0);
               
               // Check if product was restocked (quantity went from low to good)
-              const wasLow = prevQty < minQty || prevQty === 0;
+              const wasLow = prevQty <= minQty || prevQty === 0;
               const isGoodNow = currentQty >= minQty && currentQty > 0;
               if (wasLow && isGoodNow) {
                 productWasRestocked.add(product.id);
