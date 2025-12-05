@@ -235,7 +235,9 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                           <span className="text-gray-400 dark:text-gray-500 italic">No description</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-gray-900 dark:text-gray-100">{product.category}</TableCell>
+                      <TableCell className="text-gray-900 dark:text-gray-100">
+                        {product.category || <span className="text-gray-400 dark:text-gray-500 italic">No category</span>}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-gray-900 dark:text-gray-100">{Number(product.quantity) || 0}</span>
