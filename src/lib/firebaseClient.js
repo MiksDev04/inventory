@@ -115,44 +115,29 @@ export async function getProduct(id) {
   const d = await getDoc(doc(db, 'products', String(id)));
   if (!d.exists()) return null;
   const data = docData(d);
-  console.log('[Firestore] getProduct:', id, 'Data:', data);
   console.log('[Firestore] images field:', data.images, 'Type:', typeof data.images, 'IsArray:', Array.isArray(data.images));
   return data;
 }
 
 export async function createProduct(payload) {
-  console.log('[Firestore] createProduct payload:', payload);
   console.log('[Firestore] payload.images:', payload.images, 'Type:', typeof payload.images, 'IsArray:', Array.isArray(payload.images));
   
   const p = { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-  console.log('[Firestore] Saving to Firestore:', p);
   
   const ref = await addDoc(collection(db, 'products'), p);
-  console.log('[Firestore] Product created with ID:', ref.id);
   return ref.id;
 }
 
 export async function updateProduct(id, payload) {
-  console.log('[Firestore] updateProduct id:', id, 'payload:', payload);
-  console.log('[Firestore] payload.images:', payload.images, 'Type:', typeof payload.images, 'IsArray:', Array.isArray(payload.images));
-  
   const updatePayload = { 
     ...payload, 
     updatedAt: serverTimestamp(),
     created_at: deleteField(),  // Remove old field
     updated_at: deleteField()   // Remove old field
   };
-  console.log('[Firestore] Full update payload:', updatePayload);
-  console.log('[Firestore] Update payload images field:', updatePayload.images);
   
   const ref = doc(db, 'products', String(id));
   await updateDoc(ref, updatePayload);
-  console.log('[Firestore] Product updated successfully');
-  
-  // Verify what was saved
-  const verifyDoc = await getDoc(ref);
-  const savedData = verifyDoc.data();
-  console.log('[Firestore] Verification - saved images:', savedData.images);
 }
 
 export async function deleteProduct(id) {
@@ -652,13 +637,11 @@ export async function deleteTransaction(id) {
 
 // Clean up old snake_case timestamp fields
 export async function cleanupOldTimestampFields() {
-  console.log('Starting cleanup of old timestamp fields...');
   const collections = ['products', 'categories', 'suppliers', 'notifications', 'inventory_reports', 'transactions'];
   let totalUpdated = 0;
   
   for (const collectionName of collections) {
-    console.log(`Processing ${collectionName}...`);
-    const snap = await getDocs(collection(db, collectionName));
+      const snap = await getDocs(collection(db, collectionName));
     
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
@@ -717,12 +700,10 @@ export async function cleanupOldTimestampFields() {
       if (Object.keys(updates).length > 0) {
         await updateDoc(doc(db, collectionName, docSnap.id), updates);
         totalUpdated++;
-        console.log(`  Cleaned ${docSnap.id}`);
-      }
+            }
     }
   }
   
-  console.log(`Cleanup complete! Updated ${totalUpdated} documents.`);
   return totalUpdated;
 }
 

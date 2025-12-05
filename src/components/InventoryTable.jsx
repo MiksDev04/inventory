@@ -86,18 +86,10 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
   };
 
   const handleSort = (column) => {
-    console.log('InventoryTable handleSort called with column:', column);
-    console.log('onSort prop:', onSort);
-    console.log('typeof onSort:', typeof onSort);
     if (onSort) {
-      console.log('Calling onSort with column:', column);
       onSort(column);
-    } else {
-      console.error('onSort is not a function!');
     }
   };
-
-  console.log('InventoryTable rendered with sortColumn:', sortColumn, 'sortDirection:', sortDirection);
 
   return (
     <>
@@ -116,10 +108,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   <TableHead>Images</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('SKU header clicked!', e);
-                      handleSort('sku');
-                    }}
+                    onClick={() => handleSort('sku')}
                   >
                     <div className="flex items-center">
                       SKU
@@ -128,10 +117,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Name header clicked!', e);
-                      handleSort('name');
-                    }}
+                    onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center">
                       Name
@@ -139,11 +125,8 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="hidden xl:table-cell cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Brand header clicked!', e);
-                      handleSort('brand');
-                    }}
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={() => handleSort('brand')}
                   >
                     <div className="flex items-center">
                       Brand
@@ -153,10 +136,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   <TableHead className="hidden lg:table-cell">Description</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Category header clicked!', e);
-                      handleSort('category');
-                    }}
+                    onClick={() => handleSort('category')}
                   >
                     <div className="flex items-center">
                       Category
@@ -165,10 +145,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Quantity header clicked!', e);
-                      handleSort('quantity');
-                    }}
+                    onClick={() => handleSort('quantity')}
                   >
                     <div className="flex items-center">
                       Quantity
@@ -177,10 +154,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Price header clicked!', e);
-                      handleSort('price');
-                    }}
+                    onClick={() => handleSort('price')}
                   >
                     <div className="flex items-center">
                       Price
@@ -189,10 +163,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Supplier header clicked!', e);
-                      handleSort('supplier');
-                    }}
+                    onClick={() => handleSort('supplier')}
                   >
                     <div className="flex items-center">
                       Supplier
@@ -201,10 +172,7 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
-                    onClick={(e) => {
-                      console.log('Status header clicked!', e);
-                      handleSort('status');
-                    }}
+                    onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center">
                       Status

@@ -52,8 +52,7 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
   });
 
   const handleSort = (column) => {
-    console.log('Sorting by column:', column, 'Current direction:', sortDirection);
-    if (sortColumn === column) {
+      if (sortColumn === column) {
       // Toggle direction or clear sort
       if (sortDirection === 'asc') {
         setSortDirection('desc');

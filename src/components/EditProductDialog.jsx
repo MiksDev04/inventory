@@ -30,9 +30,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
   useEffect(() => {
     const loadProduct = async () => {
       if (product) {
-        console.log('[EditProductDialog] Product loaded:', product);
-        console.log('[EditProductDialog] Product images:', product.images);
-        
+                
         setFormData({
           name: product.name || "",
           sku: product.sku || "",
@@ -51,8 +49,7 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
         setAdjustmentType("add");
         // Set existing image previews (from stored paths)
         if (product.images && Array.isArray(product.images)) {
-          console.log('[EditProductDialog] Loading existing images:', product.images.length);
-          setExistingImagePaths(product.images);
+                setExistingImagePaths(product.images);
           
           const previews = [];
           for (let idx = 0; idx < product.images.length; idx++) {
@@ -69,11 +66,9 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
             });
           }
           
-          console.log('[EditProductDialog] Previews created:', previews.length);
-          setImagePreviews(previews);
+                setImagePreviews(previews);
         } else {
-          console.log('[EditProductDialog] No existing images');
-          setExistingImagePaths([]);
+                setExistingImagePaths([]);
           setImagePreviews([]);
         }
         setNewImages([]);
@@ -85,7 +80,6 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-    console.log('[EditProductDialog] Files selected:', files.length, files);
     if (files.length === 0) return;
 
     // Create previews for new images
@@ -96,16 +90,13 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       isExisting: false
     }));
 
-    console.log('[EditProductDialog] Previews created:', previews.length);
     setImagePreviews(prev => {
       const updated = [...prev, ...previews];
-      console.log('[EditProductDialog] Image previews updated to:', updated.length);
-      return updated;
+        return updated;
     });
     setNewImages(prev => {
       const updated = [...prev, ...files];
-      console.log('[EditProductDialog] New images updated to:', updated.length);
-      return updated;
+        return updated;
     });
   };
 
@@ -154,15 +145,6 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       ? originalQuantity + (parseInt(quantityAdjustment) || 0)
       : Math.max(0, originalQuantity - (parseInt(quantityAdjustment) || 0));
     
-    console.log('[EditProductDialog] Form submitted!');
-    console.log('[EditProductDialog] Original quantity:', originalQuantity);
-    console.log('[EditProductDialog] Adjustment type:', adjustmentType);
-    console.log('[EditProductDialog] Adjustment amount:', quantityAdjustment);
-    console.log('[EditProductDialog] Final quantity:', finalQuantity);
-    console.log('[EditProductDialog] formData:', formData);
-    console.log('[EditProductDialog] existingImagePaths:', existingImagePaths);
-    console.log('[EditProductDialog] newImages:', newImages);
-    console.log('[EditProductDialog] Product ID:', product.id, 'Type:', typeof product.id);
     
     // Determine status based on quantity and minQuantity
     let status = "in-stock";
@@ -190,9 +172,6 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
       newImages: newImages
     };
     
-    console.log('[EditProductDialog] Calling onUpdate with:', updateData);
-    console.log('[EditProductDialog] existingImages count:', updateData.existingImages?.length);
-    console.log('[EditProductDialog] newImages count:', updateData.newImages?.length);
     onUpdate(updateData);
   };
 

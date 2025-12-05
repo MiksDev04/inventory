@@ -101,11 +101,9 @@ export function InventoryDashboard() {
   };
 
   const handleUpdateProduct = async (updatedProduct) => {
-    console.log('handleUpdateProduct received:', updatedProduct);
-    try {
+      try {
       await apiUpdateProduct(updatedProduct.id, updatedProduct);
-      console.log('API call successful, refreshing...');
-      fetchProductsPage();
+          fetchProductsPage();
     } catch (e) {
       setError('Failed to update product');
       console.error('Update error:', e);

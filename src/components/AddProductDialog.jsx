@@ -48,8 +48,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-    console.log('[AddProductDialog] Files selected:', files.length, files);
-    if (files.length === 0) return;
+      if (files.length === 0) return;
 
     // Create previews
     const previews = files.map(file => ({
@@ -58,16 +57,13 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
       name: file.name
     }));
 
-    console.log('[AddProductDialog] Previews created:', previews.length);
-    setImagePreviews(prev => {
+      setImagePreviews(prev => {
       const updated = [...prev, ...previews];
-      console.log('[AddProductDialog] Image previews updated:', updated.length);
-      return updated;
+          return updated;
     });
     setFormData(prev => {
       const updated = { ...prev, images: [...prev.images, ...files] };
-      console.log('[AddProductDialog] formData.images updated:', updated.images.length);
-      return updated;
+          return updated;
     });
   };
 
@@ -100,12 +96,8 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
       return;
     }
     
-    console.log('AddProductDialog - handleSubmit');
-    console.log('formData:', formData);
-    console.log('formData.images:', formData.images);
-    console.log('Is array?', Array.isArray(formData.images));
-    console.log('Length:', formData.images?.length);
-    
+          console.log('Is array?', Array.isArray(formData.images));
+      
     // Determine status based on quantity and minQuantity
     let status = "in-stock";
     if (formData.quantity === 0) {
@@ -115,8 +107,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
     }
 
     const dataToSend = { ...formData, status };
-    console.log('Sending to onAdd:', dataToSend);
-    onAdd(dataToSend);
+      onAdd(dataToSend);
     
     // Clean up preview URLs
     imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));

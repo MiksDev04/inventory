@@ -56,55 +56,77 @@ function App() {
       let previousProducts = new Map();
       let productWasRestocked = new Set(); // Track which products were restocked
       let isFirstLoad = true;
+      let processingQueue = Promise.resolve(); // Sequential processing queue
+      let debounceTimer = null; // Debounce rapid subscription fires
       
       // Set up real-time listeners
       const unsubscribeProducts = fb.subscribeToProducts((products) => {
-        setProducts(products);
-        
-        // On first load (when opening the app), check all products for low/out of stock
-        if (isFirstLoad) {
-          isFirstLoad = false;
-          // Check all products that are currently low or out of stock
-          api.checkAllProductsForNotifications().catch(e => 
-            console.error('Failed to check products on startup', e)
-          );
+        // Clear any existing debounce timer
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
         }
         
-        // Auto-check for low/out of stock when products change (from POS/external systems)
-        products.forEach(product => {
-          const prevProduct = previousProducts.get(product.id);
+        // Debounce rapid fires - wait 500ms before processing
+        debounceTimer = setTimeout(() => {
+          // Queue this update to be processed sequentially
+          processingQueue = processingQueue.then(async () => {
+            setProducts(products);
           
-          if (prevProduct) {
-            const prevQty = Number(prevProduct.quantity || 0);
+          // On first load (when opening the app), check all products for low/out of stock
+          if (isFirstLoad) {
+            isFirstLoad = false;
+            // Check all products that are currently low or out of stock
+            try {
+              await api.checkAllProductsForNotifications();
+            } catch (e) {
+              console.error('Failed to check products on startup', e);
+            }
+            return;
+          }
+          
+          // Auto-check for low/out of stock when products change (from POS/external systems)
+          for (const product of products) {
+            const prevProduct = previousProducts.get(product.id);
+            
             const currentQty = Number(product.quantity || 0);
             const minQty = Number(product.minQuantity || product.min_quantity || 0);
             
-            // Check if product was restocked (quantity went from low to good)
-            const wasLow = prevQty < minQty || prevQty === 0;
-            const isGoodNow = currentQty >= minQty && currentQty > 0;
-            if (wasLow && isGoodNow) {
-              productWasRestocked.add(product.id);
-            }
-            
-            // Check if quantity decreased and is now low/out of stock
-            const isLowNow = currentQty === 0 || currentQty < minQty;
-            if (isLowNow) {
-              // Create notification if:
-              // 1. Quantity decreased from previous check, OR
-              // 2. Product was restocked and is now low again
-              if (currentQty < prevQty || productWasRestocked.has(product.id)) {
-                api.checkProductStockNotification(product.id).catch(e => 
-                  console.error('Failed to create stock notification', e)
-                );
+            if (prevProduct) {
+              const prevQty = Number(prevProduct.quantity || 0);
+              
+              // Check if product was restocked (quantity went from low to good)
+              const wasLow = prevQty < minQty || prevQty === 0;
+              const isGoodNow = currentQty >= minQty && currentQty > 0;
+              if (wasLow && isGoodNow) {
+                productWasRestocked.add(product.id);
+              }
+              
+              // Check if quantity changed and is now low/out of stock
+              const isLowNow = currentQty === 0 || currentQty < minQty;
+              const qtyChanged = currentQty !== prevQty;
+              
+              console.log(`Product: ${product.name}, Qty: ${currentQty}, MinQty: ${minQty}, IsLow: ${isLowNow}, QtyChanged: ${qtyChanged}`);
+              
+              if (isLowNow && qtyChanged) {
+                console.log(`Creating notification for ${product.name}`);
+                try {
+                  await api.checkProductStockNotification(product.id);
+                  console.log(`Notification created for ${product.name}`);
+                } catch (e) {
+                  console.error('Failed to create stock notification', e);
+                }
                 // Clear restocked flag after creating notification
                 productWasRestocked.delete(product.id);
               }
             }
+            
+            // Always update tracked state
+            previousProducts.set(product.id, { ...product });
           }
-          
-          // Update tracked state
-          previousProducts.set(product.id, { ...product });
+        }).catch(err => {
+          console.error('Error processing product updates:', err);
         });
+        }, 500); // Wait 500ms to batch rapid updates
       });
 
       const unsubscribeCategories = fb.subscribeToCategories((categories) => {

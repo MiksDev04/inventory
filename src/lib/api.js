@@ -28,17 +28,14 @@ export async function getProducts(opts) {
 }
 
 export async function createProduct(payload) {
-  console.log('createProduct called with payload:', payload);
   console.log('payload.images:', payload.images, 'Type:', Array.isArray(payload.images), 'Length:', payload.images?.length);
   
   let imagePaths = [];
   
   // Handle image uploads if present
   if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
-    console.log('Uploading images...', payload.images);
-    imagePaths = await uploadProductImages(payload.images, payload.sku || `product-${Date.now()}`);
-    console.log('Upload complete. Paths:', imagePaths);
-  }
+      imagePaths = await uploadProductImages(payload.images, payload.sku || `product-${Date.now()}`);
+    }
   
   // Create product with image paths
   const productData = { 
@@ -50,7 +47,6 @@ export async function createProduct(payload) {
   delete productData.images; // Remove File objects
   productData.images = imagePaths; // Add paths
   
-  console.log('Saving to Firestore:', productData);
   
   const id = await fb.createProduct(productData);
   const created = await fb.getProduct(id);
@@ -84,13 +80,11 @@ async function uploadProductImages(files) {
       // Upload to Cloudinary
       const downloadURL = await uploadImageToCloudinary(file);
       uploadedUrls.push(downloadURL);
-      console.log(`✓ Image uploaded to Cloudinary: ${downloadURL}`);
-    } catch (e) {
+        } catch (e) {
       console.error(`✗ Failed to upload ${file.name}:`, e);
     }
   }
   
-  console.log(`Uploaded ${uploadedUrls.length} images to Cloudinary`);
   return uploadedUrls;
 }
 
@@ -112,7 +106,6 @@ export async function getImageUrl(path) {
 }
 
 export async function updateProduct(id, payload) {
-  console.log('updateProduct called with id:', id, 'payload:', payload);
   
   // Fetch previous product data for comparison and image cleanup
   const previous = await fb.getProduct(id);
@@ -126,17 +119,14 @@ export async function updateProduct(id, payload) {
   if (updateData.minQuantity !== undefined) updateData.minQuantity = Number(updateData.minQuantity) || 0;
   if (updateData.min_quantity !== undefined) updateData.minQuantity = Number(updateData.min_quantity) || 0;
   
-  console.log('existingImages:', existingImages);
   console.log('newImages:', newImages, 'Type:', Array.isArray(newImages), 'Length:', newImages?.length);
   
   // Handle new image uploads
   let additionalImagePaths = [];
   if (newImages && Array.isArray(newImages) && newImages.length > 0) {
     const sku = updateData.sku || `product-${id}`;
-    console.log('Uploading new images for SKU:', sku);
-    additionalImagePaths = await uploadProductImages(newImages, sku);
-    console.log('New image paths:', additionalImagePaths);
-  }
+      additionalImagePaths = await uploadProductImages(newImages, sku);
+    }
   
   // Delete removed images from Firebase Storage
   const previousImages = Array.isArray(previous?.images) ? previous.images : [];
@@ -147,8 +137,7 @@ export async function updateProduct(id, payload) {
     if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
       try {
         await deleteImageFromCloudinary(imageUrl);
-        console.log('✓ Image unlinked from product:', imageUrl);
-      } catch (e) {
+            } catch (e) {
         console.error('Failed to process image removal:', e);
       }
     }
@@ -156,11 +145,9 @@ export async function updateProduct(id, payload) {
   
   // Combine existing and new image paths - always set images field
   const allImages = [...(existingImages || []), ...additionalImagePaths];
-  console.log('All images to save:', allImages);
   // Always update images field, even if empty
   updateData.images = allImages;
   
-  console.log('Updating product in Firestore:', updateData);
   
   await fb.updateProduct(id, updateData);
   const updated = await fb.getProduct(id);
@@ -236,8 +223,7 @@ export async function deleteProduct(id) {
       if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
         try {
           await deleteImageFromCloudinary(imageUrl);
-          console.log('✓ Image unlinked from product:', imageUrl);
-        } catch (e) {
+                } catch (e) {
           console.error('Failed to process image removal:', e);
         }
       }
@@ -307,6 +293,9 @@ export async function deleteNotification(id) {
   return fb.deleteNotification ? fb.deleteNotification(id) : null; 
 }
 
+// Track when we last created a notification for each product+type to prevent rapid duplicates
+const lastNotificationCreated = new Map();
+
 // Check and create notification for a specific product
 export async function checkProductStockNotification(productId, userId) {
   try {
@@ -315,35 +304,45 @@ export async function checkProductStockNotification(productId, userId) {
       userId = users && users.length > 0 ? users[0].id : '1';
     }
     
-    // Get settings to check if notifications are enabled
     const settings = await fb.getSettings();
     const notifSettings = settings.notifications || { lowStock: true, outOfStock: true };
     
-    // Get the specific product
     const product = await fb.getProduct(productId);
     if (!product) return null;
     
     const qty = Number(product.quantity || 0);
-    // Use product's minQuantity, or fall back to system setting
     const minQ = Number(product.min_quantity || product.minQuantity || settings.system?.lowStockThreshold || 20);
     
-    // Check if product is low/out of stock and create notification
+    console.log(`API Check - Product: ${product.name}, Qty: ${qty}, MinQty: ${minQ}, Settings:`, notifSettings);
+    
     if (qty === 0 || qty < minQ) {
       const type = qty === 0 ? 'out_of_stock' : 'low_stock';
       
-      // Only create notification if that type is enabled in settings
+      console.log(`Type determined: ${type}`);
+      
       if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
           (type === 'low_stock' && !notifSettings.lowStock)) {
-        return null; // Notification disabled for this type
+        console.log(`Notification BLOCKED - ${type} is disabled`);
+        return null;
       }
+      
+      // Check if we created a notification for this product+type very recently (within 2 seconds)
+      const key = `${productId}-${type}`;
+      const lastTime = lastNotificationCreated.get(key);
+      const now = Date.now();
+      if (lastTime && now - lastTime < 2000) {
+        console.log(`Notification BLOCKED - too soon (${now - lastTime}ms ago)`);
+        return null;
+      }
+      
+      console.log(`Creating notification: ${type} for ${product.name}`);
       
       const title = qty === 0 ? `${product.name} is out of stock` : `${product.name} is running low`;
       const message = qty === 0
         ? `Product "${product.name}" (SKU: ${product.sku}) is currently out of stock. Please reorder immediately.`
         : `Product "${product.name}" (SKU: ${product.sku}) has only ${qty} units left (minimum: ${minQ}). Consider restocking soon.`;
       
-      // Create notification immediately
-      return await fb.createNotification({ 
+      const result = await fb.createNotification({ 
         userId, 
         type, 
         title, 
@@ -351,6 +350,11 @@ export async function checkProductStockNotification(productId, userId) {
         productId,
         itemSku: product.sku 
       });
+      
+      // Record when we created this notification for this specific type
+      lastNotificationCreated.set(key, now);
+      
+      return result;
     }
     
     return null;
@@ -449,15 +453,13 @@ const NOTIFICATION_COOLDOWN = 60000; // 1 minute cooldown between checks
 export async function generateStockNotifications(userId) {
   // Prevent concurrent execution
   if (isGeneratingNotifications) {
-    console.log('Notification generation already in progress, skipping...');
-    return [];
+      return [];
   }
   
   // Prevent too frequent checks (cooldown period)
   const now = Date.now();
   if (lastNotificationCheck && (now - lastNotificationCheck) < NOTIFICATION_COOLDOWN) {
-    console.log('Notification check on cooldown, skipping...');
-    return [];
+      return [];
   }
   
   isGeneratingNotifications = true;
@@ -497,13 +499,11 @@ export async function generateStockNotifications(userId) {
       if (qty === 0 || qty < minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
         
-        console.log('Product check:', p.name, 'qty:', qty, 'type:', type, 'outOfStock setting:', notifSettings.outOfStock, 'lowStock setting:', notifSettings.lowStock);
-        
+              
         // Only create notification if that type is enabled in settings
         if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
             (type === 'low_stock' && !notifSettings.lowStock)) {
-          console.log('Skipping notification for', p.name, 'because setting is disabled');
-          continue; // Skip this notification
+                  continue; // Skip this notification
         }
         
         const title = qty === 0 ? `${p.name} is out of stock` : `${p.name} is running low`;
@@ -710,13 +710,11 @@ export async function updateProfile(payload, userId) {
 }
 
 export async function changePassword(payload, userId) {
-  console.log('changePassword called with userId:', userId);
   
   if (!userId) {
     // Get the first user's ID
     const users = await fb.listUsers();
-    console.log('Fetched users for password change:', users);
-    if (users && users.length > 0) {
+      if (users && users.length > 0) {
       userId = users[0].id;
     }
   }
@@ -725,19 +723,15 @@ export async function changePassword(payload, userId) {
     throw new Error('No user found');
   }
   
-  console.log('Getting user by ID:', userId);
   // Get current user to verify password
   const currentUser = await fb.getUserById(String(userId));
-  console.log('Current user from DB:', currentUser);
   
   if (!currentUser) {
     throw new Error('User not found');
   }
   
   // Verify current password against hashed value
-  console.log('Verifying current password...');
   const isValid = await fb.comparePassword(payload.currentPassword, currentUser.password_hash);
-  console.log('Password verification result:', isValid);
   
   if (!isValid) {
     throw new Error('incorrect_current_password');
@@ -749,10 +743,8 @@ export async function changePassword(payload, userId) {
   }
   
   // Hash and update password
-  console.log('Hashing new password and updating user...');
   const hashed = await fb.hashPassword(payload.newPassword);
   await fb.updateUser(String(userId), { password_hash: hashed });
-  console.log('Password updated successfully');
   return { success: true };
 }
 
