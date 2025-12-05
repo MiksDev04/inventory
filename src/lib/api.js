@@ -399,7 +399,7 @@ export async function checkAllProductsForNotifications(userId) {
       const minQ = Number(product.min_quantity || product.minQuantity || systemThreshold);
       
       // Only create notification if product is low/out of stock
-      if (qty === 0 || qty < minQ) {
+      if (qty === 0 || qty <= minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
         
         // Only create notification if that type is enabled in settings
@@ -496,7 +496,7 @@ export async function generateStockNotifications(userId) {
       const minQ = Number(p.min_quantity || p.minQuantity || systemThreshold);
       
       // Check if product needs a notification
-      if (qty === 0 || qty < minQ) {
+      if (qty === 0 || qty <= minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
         
               
