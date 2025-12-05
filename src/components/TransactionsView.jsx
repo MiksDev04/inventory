@@ -13,6 +13,8 @@ export default function TransactionsView({
   const [typeFilter, setTypeFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("30"); // days
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const filtered = useMemo(() => {
     // Apply type and search filters
@@ -170,30 +172,34 @@ export default function TransactionsView({
       </Card>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="whitespace-nowrap">Date</TableHead>
-              <TableHead className="whitespace-nowrap">Type</TableHead>
-              <TableHead className="whitespace-nowrap">Product</TableHead>
-              <TableHead className="whitespace-nowrap">SKU</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Quantity</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Unit Price</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Total</TableHead>
-              <TableHead className="whitespace-nowrap">Supplier</TableHead>
-              <TableHead className="whitespace-nowrap">Notes</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} className="text-center text-gray-500 dark:text-gray-400">
-                No transactions found for selected filters.
-              </TableCell>
-            </TableRow>
-          ) : (
-            filtered.map((t) => {
+      <Card>
+        <CardContent className="pt-6">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
+                  <TableHead className="whitespace-nowrap">Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Product</TableHead>
+                  <TableHead className="whitespace-nowrap">SKU</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Quantity</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Unit Price</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Total</TableHead>
+                  <TableHead className="whitespace-nowrap">Supplier</TableHead>
+                  <TableHead className="whitespace-nowrap">Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-gray-500 dark:text-gray-400">
+                    No transactions found for selected filters.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered
+                  .slice((page - 1) * perPage, page * perPage)
+                  .map((t) => {
               const qty = Number(t.quantity || 0);
               const unit = Number(t.unitPrice || t.price || 0);
               const total = Number(t.total || qty * unit);
@@ -273,7 +279,45 @@ export default function TransactionsView({
           )}
         </TableBody>
       </Table>
+      
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between mt-4 p-2">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setPage(Math.max(1, page - 1))} 
+            disabled={page <= 1}
+          >
+            Prev
+          </Button>
+          <div>Page {page} of {Math.max(1, Math.ceil(filtered.length / perPage))}</div>
+          <Button 
+            variant="outline" 
+            onClick={() => setPage(page + 1)} 
+            disabled={page >= Math.max(1, Math.ceil(filtered.length / perPage))}
+          >
+            Next
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Per page:</div>
+          <select 
+            value={perPage} 
+            onChange={(e) => { 
+              setPerPage(parseInt(e.target.value, 10)); 
+              setPage(1);
+            }} 
+            className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
       </div>
+      </div>
+        </CardContent>
+      </Card>
 
       {/* Transaction Detail Modal */}
       {selectedTransaction && (

@@ -126,9 +126,9 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
       name: "",
       sku: "",
       category: "",
-      quantity: 0,
-      minQuantity: 0,
-      price: 0,
+      quantity: "",
+      minQuantity: "",
+      price: "",
       supplier: "",
       brand: "",
       description: "",
@@ -282,7 +282,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
                   required
                   min="0"
                   value={formData.minQuantity}
-                  onChange={(e) => handleChange("minQuantity", parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleChange("minQuantity", e.target.value === "" ? "" : parseInt(e.target.value) || "")}
                   onKeyDown={(e) => {
                     if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-') {
                       e.preventDefault();

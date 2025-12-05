@@ -30,6 +30,7 @@ const iconOptions = [
   { value: "🏠", label: "🏠 Home" },
   { value: "🎮", label: "🎮 Gaming" },
   { value: "🍕", label: "🍕 Foods" },
+  { value: "🧴", label: "🧴 Personal Care" },
 ];
 
 export function AddCategoryDialog({ isOpen, onClose, onAdd }) {
