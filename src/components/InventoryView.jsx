@@ -68,9 +68,14 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl lg:text-3xl dark:text-white">Inventory Management</h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">View and manage all inventory products</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-lg flex items-center justify-center">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Inventory</h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">View and manage all inventory products</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={handleExport}>

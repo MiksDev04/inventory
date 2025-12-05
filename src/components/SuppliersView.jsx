@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Mail, Phone, MapPin, Pencil, Trash2, Search } from "lucide-react";
+import { Users, Plus, Mail, Phone, MapPin, Pencil, Trash2, Search, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -71,21 +71,83 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
 
   const activeSuppliers = (suppliers || []).filter(s => s.status === "active");
   const totalProducts = (products || []).length;
+  const avgProductsPerSupplier = suppliers.length > 0 ? (totalProducts / suppliers.length).toFixed(1) : 0;
+
+  const handleExport = () => {
+    // Summary Stats
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryRows = [
+      ['Total Suppliers', suppliers.length],
+      ['Active Suppliers', activeSuppliers.length],
+      ['Total Products', totalProducts],
+      ['Average Products Per Supplier', avgProductsPerSupplier]
+    ];
+
+    // Supplier Details
+    const detailHeaders = ['Name', 'Contact Person', 'Email', 'Phone', 'Location', 'Status', 'Description', 'Product Count', 'Categories', 'Total Value'];
+    const detailRows = filteredSuppliers.map(s => {
+      const stats = getSupplierStats(s.name);
+      return [
+        s.name || '',
+        s.contactPerson || '',
+        s.email || '',
+        s.phone || '',
+        s.location || '',
+        s.status || '',
+        (s.description || '').replace(/[\n\r"/]/g, ' '),
+        stats.productCount,
+        stats.categories.join('; '),
+        `₱${stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ];
+    });
+
+    // Combine all sections
+    const csvContent = [
+      '=== SUPPLIER SUMMARY ===',
+      summaryHeaders.join(','),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== SUPPLIER DETAILS ===',
+      detailHeaders.join(','),
+      ...detailRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `suppliers_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600 dark:text-blue-500" />
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Suppliers</h1>
+            <div className="w-10 h-10 bg-teal-600 dark:bg-teal-500 rounded-lg flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Suppliers</h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your supplier relationships</p>
+            </div>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
-            Add Supplier
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => handleExport()}>
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Supplier</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
-        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your supplier relationships</p>
       </div>
 
       {/* Stats */}

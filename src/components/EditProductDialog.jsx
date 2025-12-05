@@ -282,13 +282,13 @@ export function EditProductDialog({ product, isOpen, onClose, onUpdate, categori
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800">
-                    {/* If the product's current supplier isn't in the suppliers list, show it first for transparency */}
-                    {formData.supplier && !suppliers.find(s => s.name === formData.supplier) && (
+                    {/* If the product's current supplier isn't in the active suppliers list, show it first for transparency */}
+                    {formData.supplier && !suppliers.find(s => s.name === formData.supplier && s.status === 'active') && (
                       <SelectProduct key={`current-sup-${formData.supplier}`} value={formData.supplier} className="text-gray-900 dark:text-gray-100">
-                        {formData.supplier}
+                        {formData.supplier} (Inactive)
                       </SelectProduct>
                     )}
-                    {suppliers.map((s) => (
+                    {suppliers.filter(s => s.status === 'active').map((s) => (
                       <SelectProduct key={s.id} value={s.name} className="text-gray-900 dark:text-gray-100">
                         {s.name}
                       </SelectProduct>

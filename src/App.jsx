@@ -21,6 +21,7 @@ function App() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [sidebarWidth, setSidebarWidth] = useState(() => window.innerWidth >= 1024 ? 240 : 0);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -274,7 +275,11 @@ function App() {
     <ThemeProvider>
       <ProfileProvider>
         {!loggedIn ? (
-          <LoginPage onLogin={(user) => { setLoggedIn(true); setCurrentView('dashboard'); try { localStorage.setItem('user', JSON.stringify(user || {})); } catch(e){ console.log(e) } }} />
+          <LoginPage onLogin={(user) => { 
+            setLoggedIn(true); 
+            setCurrentView('dashboard'); 
+            setCurrentUser(user);
+          }} />
         ) : (
           <>
             <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
@@ -285,6 +290,7 @@ function App() {
                 width={sidebarWidth}
                 onWidthChange={setSidebarWidth}
                 logout={handleLogout}
+                currentUser={currentUser}
               />
               <main 
                 className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#0d1117] w-full pt-16 lg:pt-0"
@@ -328,6 +334,7 @@ function App() {
               reports={reports}
               pagination={reportsPagination}
               onNavigate={setCurrentView}
+              onPaginationChange={setReportsPagination}
             />
           )}
           {currentView === 'transactions' && (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Archive } from "lucide-react";
+import { Download, Archive, BarChart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Toast } from './Toast';
 import api from '../lib/api';
 
-export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onNavigate }) {
+export default function ReportsView({ reports: initialReports = [], pagination: initialPagination = { page: 1, perPage: 10, total: 0 }, onNavigate, onPaginationChange }) {
   const [reports, setReports] = useState(initialReports);
   const [error, setError] = useState("");
   const [archiving, setArchiving] = useState(null);
@@ -121,22 +121,29 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl">Reports</h1>
-          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Periodic snapshots of inventory totals (weekly/monthly)</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={handleExport} className="gap-2">
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button variant="outline" onClick={() => onNavigate && onNavigate('archived-reports')} className="gap-2">
-            <Archive className="w-4 h-4" />
-            <span className="hidden sm:inline">Archived</span>
-          </Button>
-          <Button onClick={() => handleGenerateReport('weekly')} className="text-sm">Generate Weekly</Button>
-          <Button onClick={() => handleGenerateReport('monthly')} className="text-sm">Generate Monthly</Button>
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-600 dark:bg-orange-500 rounded-lg flex items-center justify-center">
+              <BarChart className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Reports</h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Periodic snapshots of inventory totals (weekly/monthly)</p>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" className="gap-2" onClick={handleExport}>
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button variant="outline" onClick={() => onNavigate && onNavigate('archived-reports')} className="gap-2">
+              <Archive className="w-4 h-4" />
+              <span className="hidden sm:inline">Archived</span>
+            </Button>
+            <Button onClick={() => handleGenerateReport('weekly')} className="text-sm">Generate Weekly</Button>
+            <Button onClick={() => handleGenerateReport('monthly')} className="text-sm">Generate Monthly</Button>
+          </div>
         </div>
       </div>
 
@@ -164,7 +171,9 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reports.map((r) => (
+                  {reports
+                    .slice((page - 1) * perPage, page * perPage)
+                    .map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="capitalize font-medium">{r.period}</TableCell>
                       <TableCell className="text-sm">
@@ -240,13 +249,48 @@ export default function ReportsView({ reports: initialReports = [], pagination: 
               {/* pagination controls */}
               <div className="flex items-center justify-between mt-4 p-2">
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const newPage = Math.max(1, page - 1);
+                      setPage(newPage);
+                      if (onPaginationChange) {
+                        onPaginationChange({ page: newPage, perPage, total: totalCount });
+                      }
+                    }} 
+                    disabled={page <= 1}
+                  >
+                    Prev
+                  </Button>
                   <div>Page {page} of {Math.max(1, Math.ceil((totalCount || 0) / perPage))}</div>
-                  <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= Math.max(1, Math.ceil((totalCount || 0) / perPage))}>Next</Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const newPage = page + 1;
+                      setPage(newPage);
+                      if (onPaginationChange) {
+                        onPaginationChange({ page: newPage, perPage, total: totalCount });
+                      }
+                    }} 
+                    disabled={page >= Math.max(1, Math.ceil((totalCount || 0) / perPage))}
+                  >
+                    Next
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-600">Per page:</div>
-                  <select value={perPage} onChange={(e) => { setPerPage(parseInt(e.target.value, 10)); setPage(1); }} className="border rounded px-2 py-1">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Per page:</div>
+                  <select 
+                    value={perPage} 
+                    onChange={(e) => { 
+                      const newPerPage = parseInt(e.target.value, 10);
+                      setPerPage(newPerPage); 
+                      setPage(1);
+                      if (onPaginationChange) {
+                        onPaginationChange({ page: 1, perPage: newPerPage, total: totalCount });
+                      }
+                    }} 
+                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>

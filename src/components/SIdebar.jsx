@@ -22,14 +22,34 @@ const menuItems = [
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 
-export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout }) {
+export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout, currentUser }) {
   const { theme, toggleTheme } = useTheme();
   const [isResizing, setIsResizing] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(currentUser);
   const sidebarRef = useRef(null);
+
+  // Update user when currentUser prop changes
+  useEffect(() => {
+    setUser(currentUser);
+  }, [currentUser]);
+
+  // Subscribe to current user updates in Firebase
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const unsubscribe = fb.subscribeToUsers((users) => {
+      const updatedUser = users.find(u => u.id === currentUser.id);
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.id]);
 
   // Subscribe to notifications for real-time unread count updates
   useEffect(() => {
@@ -179,11 +199,11 @@ export function Sidebar({ currentView, onNavigate, width, onWidthChange, logout 
       <div className="p-4 border-t border-gray-800 dark:border-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center">
-            <span>JB</span>
+            <span>{user?.fullName ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : user?.username?.slice(0, 2).toUpperCase() || 'U'}</span>
           </div>
           <div className="flex-1">
-            <p className="text-sm text-gray-100 dark:text-gray-200">Justin Bautista</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Administrator</p>
+            <p className="text-sm text-gray-100 dark:text-gray-200">{user?.fullName || user?.username || 'User'}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{user?.role || 'User'}</p>
           </div>
           <button 
             className="relative text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white"

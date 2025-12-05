@@ -110,11 +110,11 @@ export default function TransactionsView({
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-green-600 dark:bg-green-500 rounded-lg flex items-center justify-center">
               <ArrowLeftRight className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl lg:text-3xl dark:text-white">Transactions</h1>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Transactions</h1>
               <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Track purchases, sales, and adjustments</p>
             </div>
           </div>

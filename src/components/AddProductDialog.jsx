@@ -218,7 +218,7 @@ export function AddProductDialog({ isOpen, onClose, onAdd, categories, suppliers
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {suppliers.map((s) => (
+                    {suppliers.filter(s => s.status === 'active').map((s) => (
                       <SelectProduct key={s.id} value={s.name}>
                         {s.name}
                       </SelectProduct>

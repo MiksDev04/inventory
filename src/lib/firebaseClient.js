@@ -255,6 +255,18 @@ export async function listUsers() {
   return users;
 }
 
+// Real-time listener for users
+export function subscribeToUsers(callback) {
+  const q = query(collection(db, 'inventory_users'));
+  return onSnapshot(q, (snapshot) => {
+    const users = [];
+    snapshot.forEach(d => {
+      users.push(docData(d));
+    });
+    callback(users);
+  });
+}
+
 export async function getUserByUsername(username) {
   const q = query(collection(db, 'inventory_users'), where('username', '==', username));
   const snap = await getDocs(q);

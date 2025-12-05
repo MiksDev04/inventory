@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, Plus, Search, Pencil, Trash2, Package } from "lucide-react";
+import { FolderOpen, Plus, Search, Pencil, Trash2, Package, Download } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -93,21 +93,78 @@ export function CategoriesView({ products, categories: initialCategories, onAddC
     return colorMap[color] || "border-gray-200 dark:border-gray-800";
   };
 
+  const handleExport = () => {
+    // Calculate stats
+    const totalCategories = categories.length;
+    const totalProducts = products.length;
+    const avgProductsPerCategory = totalCategories > 0 ? (totalProducts / totalCategories).toFixed(1) : 0;
+
+    // Summary Stats
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryRows = [
+      ['Total Categories', totalCategories],
+      ['Total Products', totalProducts],
+      ['Average Products Per Category', avgProductsPerCategory]
+    ];
+
+    // Category Details
+    const categoryHeaders = ['Name', 'Icon/Color', 'Description', 'Product Count', 'Created Date'];
+    const categoryRows = filteredCategories.map(c => [
+      c.name || '',
+      c.color || '',
+      (c.description || '').replace(/[\n\r"/]/g, ' '),
+      getCategoryProductCount(c.name),
+      c.createdAt || c.created_at ? new Date(c.createdAt || c.created_at).toLocaleDateString() : 'N/A'
+    ]);
+
+    // Combine all sections
+    const csvContent = [
+      '=== CATEGORY SUMMARY ===',
+      summaryHeaders.join(','),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== CATEGORY DETAILS ===',
+      categoryHeaders.join(','),
+      ...categoryRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `categories_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-6 md:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <FolderOpen className="w-6 h-6 md:w-8 md:h-8 text-blue-600 dark:text-blue-500" />
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Categories</h1>
+            <div className="w-10 h-10 bg-purple-600 dark:bg-purple-500 rounded-lg flex items-center justify-center">
+              <FolderOpen className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Categories</h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Organize and manage your inventory categories</p>
+            </div>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
-            Add Category
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => handleExport()}>
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Category</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
-        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Organize and manage your inventory categories</p>
       </div>
 
       {/* Stats */}
@@ -195,7 +252,7 @@ export function CategoriesView({ products, categories: initialCategories, onAddC
                   {category.description}
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                  <span>Created: {new Date(category.created_at).toLocaleDateString()}</span>
+                  <span>Created: {category.createdAt || category.created_at ? new Date(category.createdAt || category.created_at).toLocaleDateString() : 'N/A'}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button 

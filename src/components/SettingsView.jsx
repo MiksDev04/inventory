@@ -314,8 +314,15 @@ export function SettingsView() {
     <div className="p-4 sm:p-6 lg:p-8">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: 'success' })} />
       <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Settings</h1>
-        <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your application settings and preferences</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gray-600 dark:bg-gray-500 rounded-lg flex items-center justify-center">
+            <Settings className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Settings</h1>
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Manage your application settings and preferences</p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">

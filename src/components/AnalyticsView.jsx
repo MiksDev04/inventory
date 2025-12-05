@@ -91,27 +91,78 @@ export function AnalyticsView(props) {
   const stockTurnover = calculateStockTurnover();
 
   const handleExport = () => {
-    // Prepare analytics summary CSV
-    const summaryData = [
-      ['Metric', 'Value'],
-      ['Total Products', products.length],
-      ['Total Inventory Value', `₱${totalValue.toFixed(2)}`],
-      ['Average Product Value', `₱${avgProductValue.toFixed(2)}`],
-      ['Stock Turnover Rate', stockTurnover.rate],
-      [''],
-      ['Top Categories by Value', ''],
-      ['Category', 'Value'],
-      ...topCategories.map(([cat, val]) => [cat, `₱${val.toFixed(2)}`]),
-      [''],
-      ['Top Suppliers by Value', ''],
-      ['Supplier', 'Value'],
-      ...topSuppliers.map(([sup, val]) => [sup, `₱${val.toFixed(2)}`])
+    // Calculate stock status distribution
+    const stockStatus = {
+      inStock: (products || []).filter(p => p.status === "in-stock").length,
+      lowStock: (products || []).filter(p => p.status === "low-stock").length,
+      outOfStock: (products || []).filter(p => p.status === "out-of-stock").length
+    };
+    
+    // Calculate price range distribution
+    const priceRanges = [
+      { label: "Under ₱1,000", min: 0, max: 1000 },
+      { label: "₱1,000 - ₱2,500", min: 1000, max: 2500 },
+      { label: "₱2,500 - ₱5,000", min: 2500, max: 5000 },
+      { label: "₱5,000+", min: 5000, max: Infinity }
+    ];
+    
+    const priceDistribution = priceRanges.map(range => ({
+      label: range.label,
+      count: (products || []).filter(p => p.price >= range.min && p.price < range.max).length
+    }));
+
+    // Summary Stats
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryRows = [
+      ['Total Inventory Value', `₱${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+      ['Average Product Value', `₱${avgProductValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+      ['Total Categories', Object.keys(categoryValue).length],
+      ['Stock Turnover Rate', stockTurnover.hasData ? `${stockTurnover.rate}x` : 'N/A']
     ];
 
-    // Create CSV content
-    const csvContent = summaryData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    // Top Categories
+    const categoryHeaders = ['Category', 'Total Value'];
+    const categoryRows = topCategories.map(([cat, val]) => [cat, `₱${val.toFixed(2)}`]);
 
-    // Download file
+    // Top Suppliers
+    const supplierHeaders = ['Supplier', 'Total Value'];
+    const supplierRows = topSuppliers.map(([sup, val]) => [sup, `₱${val.toFixed(2)}`]);
+
+    // Stock Status Distribution
+    const statusHeaders = ['Status', 'Product Count', 'Percentage'];
+    const statusRows = [
+      ['In Stock', stockStatus.inStock, `${products.length ? ((stockStatus.inStock / products.length) * 100).toFixed(1) : 0}%`],
+      ['Low Stock', stockStatus.lowStock, `${products.length ? ((stockStatus.lowStock / products.length) * 100).toFixed(1) : 0}%`],
+      ['Out of Stock', stockStatus.outOfStock, `${products.length ? ((stockStatus.outOfStock / products.length) * 100).toFixed(1) : 0}%`]
+    ];
+
+    // Price Range Analysis
+    const priceHeaders = ['Price Range', 'Product Count'];
+    const priceRows = priceDistribution.map(range => [range.label, range.count]);
+
+    // Combine all sections
+    const csvContent = [
+      '=== ANALYTICS SUMMARY ===',
+      summaryHeaders.join(','),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== TOP CATEGORIES BY VALUE ===',
+      categoryHeaders.join(','),
+      ...categoryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== TOP SUPPLIERS BY VALUE ===',
+      supplierHeaders.join(','),
+      ...supplierRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== STOCK STATUS DISTRIBUTION ===',
+      statusHeaders.join(','),
+      ...statusRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== PRICE RANGE ANALYSIS ===',
+      priceHeaders.join(','),
+      ...priceRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -274,14 +325,21 @@ export function AnalyticsView(props) {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Analytics</h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Insights and trends for your inventory</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-600 dark:bg-purple-500 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Analytics</h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Insights and trends for your inventory</p>
+            </div>
           </div>
-          <Button variant="outline" className="gap-2" onClick={handleExport}>
-            <Download className="w-4 h-4" />
-            <span className="inline">Export</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleExport}>
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </div>
         </div>
       </div>
       {loading && (

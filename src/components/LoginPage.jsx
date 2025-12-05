@@ -5,6 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Eye, EyeOff } from 'lucide-react';
 import * as api from '../lib/api';
+import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -12,6 +13,7 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,11 +95,24 @@ export default function LoginPage({ onLogin }) {
                 {showPassword ? <EyeOff className="w-4 h-4 text-gray-600" /> : <Eye className="w-4 h-4 text-gray-600" />}
               </button>
             </div>
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
           </div>
           {error && <div className="text-red-500 text-sm text-center">{error}</div>}
           <Button type="submit" className="w-full" disabled={loading || !username || !password}>{loading ? 'Logging in...' : 'Login'}</Button>
         </form>
       </Card>
+      <ForgotPasswordDialog 
+        isOpen={showForgotPassword} 
+        onClose={() => setShowForgotPassword(false)} 
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock } from "lucide-react";
+import { Package, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Clock, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 import { PesoIcon } from "./icons/PesoIcon";
 import { getProducts, getCategories, getSuppliers } from "../lib/api";
@@ -70,11 +71,89 @@ export default function Dashboard({ products: initialProducts, categories: initi
     return bValue - aValue;
   }).slice(0,5);
 
+  const handleExport = () => {
+    // Summary Stats
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryRows = [
+      ['Total Products', totalProducts],
+      ['Total Categories', totalCategories],
+      ['Total Suppliers', totalSuppliers],
+      ['Total Inventory Value', `₱${totalValue.toLocaleString()}`]
+    ];
+
+    // Category Breakdown
+    const categoryHeaders = ['Category', 'Product Count'];
+    const categoryRows = Object.entries(categoryBreakdown).map(([cat, qty]) => [cat, qty]);
+
+    // Top Value Products
+    const topProductHeaders = ['Product Name', 'SKU', 'Quantity', 'Unit Price', 'Total Value'];
+    const topProductRows = topValueProducts.map(p => [
+      p.name || '',
+      p.sku || '',
+      p.quantity || 0,
+      `₱${(p.price || 0).toLocaleString()}`,
+      `₱${((p.quantity || 0) * (p.price || 0)).toLocaleString()}`
+    ]);
+
+    // Recently Updated Products
+    const recentHeaders = ['Product Name', 'SKU', 'Quantity', 'Last Updated'];
+    const recentRows = recentlyUpdated.map(p => [
+      p.name || '',
+      p.sku || '',
+      p.quantity || 0,
+      p.lastUpdated ? new Date(p.lastUpdated).toLocaleDateString() : 'N/A'
+    ]);
+
+    // Combine all sections
+    const csvContent = [
+      '=== DASHBOARD SUMMARY ===',
+      summaryHeaders.join(','),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== INVENTORY BY CATEGORY ===',
+      categoryHeaders.join(','),
+      ...categoryRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== TOP VALUE PRODUCTS ===',
+      topProductHeaders.join(','),
+      ...topProductRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '=== RECENTLY UPDATED PRODUCTS ===',
+      recentHeaders.join(','),
+      ...recentRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `dashboard_summary_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-[#0d1117]">
         <div className="mb-6 md:mb-8">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
-          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl lg:text-3xl text-gray-900 dark:text-white">Dashboard</h1>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's what's happening with your inventory.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2" onClick={() => handleExport()}>
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </div>
+          </div>
         </div>
 
         {loading ? (
