@@ -315,7 +315,7 @@ export async function checkProductStockNotification(productId, userId) {
     
     console.log(`API Check - Product: ${product.name}, Qty: ${qty}, MinQty: ${minQ}, Settings:`, notifSettings);
     
-    if (qty === 0 || qty < minQ) {
+    if (qty === 0 || qty <= minQ) {
       const type = qty === 0 ? 'out_of_stock' : 'low_stock';
       
       console.log(`Type determined: ${type}`);
