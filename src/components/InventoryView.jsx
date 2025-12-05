@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Plus, Search, Filter, Download } from "lucide-react";
+import { Package, Plus, Search, Filter, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
@@ -12,6 +12,10 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const filteredProducts = (products || []).filter(product => {
     const matchesSearch = 
@@ -25,6 +29,44 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Apply sorting
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (!sortColumn) return 0;
+
+    let aVal = a[sortColumn];
+    let bVal = b[sortColumn];
+
+    // Handle numeric columns
+    if (sortColumn === 'quantity' || sortColumn === 'price') {
+      aVal = Number(aVal) || 0;
+      bVal = Number(bVal) || 0;
+    } else {
+      // Handle string columns
+      aVal = String(aVal || '').toLowerCase();
+      bVal = String(bVal || '').toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (column) => {
+    console.log('Sorting by column:', column, 'Current direction:', sortDirection);
+    if (sortColumn === column) {
+      // Toggle direction or clear sort
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortColumn(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const handleAddProduct = (newProduct) => {
     onAddProduct(newProduct);
     setIsAddDialogOpen(false);
@@ -33,7 +75,7 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
   const handleExport = () => {
     // Prepare CSV data
     const headers = ['SKU', 'Name', 'Brand', 'Category', 'Supplier', 'Quantity', 'Min Quantity', 'Price', 'Status', 'Description'];
-    const rows = filteredProducts.map(p => [
+    const rows = sortedProducts.map(p => [
       p.sku || '',
       p.name || '',
       p.brand || '',
@@ -135,11 +177,21 @@ export function InventoryView({ products, onAddProduct, onUpdateProduct, onDelet
 
       {/* Inventory Table */}
       <InventoryTable 
-        products={filteredProducts} 
+        products={sortedProducts} 
         onUpdate={onUpdateProduct}
         onDelete={onDeleteProduct}
         categories={categories}
         suppliers={suppliers}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={handleSort}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(newPerPage) => {
+          setPerPage(newPerPage);
+          setPage(1);
+        }}
       />
 
       {/* Add Product Dialog */}

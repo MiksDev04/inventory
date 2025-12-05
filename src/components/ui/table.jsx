@@ -41,9 +41,10 @@ export function TableRow({ children, className = "", onClick }) {
   );
 }
 
-export function TableHead({ children, className = "" }) {
+export function TableHead({ children, className = "", onClick }) {
   return (
     <th
+      onClick={onClick}
       className={cn(
         "h-12 px-4 text-left align-middle font-medium text-gray-500 dark:text-gray-400 [&:has([role=checkbox])]:pr-0",
         className

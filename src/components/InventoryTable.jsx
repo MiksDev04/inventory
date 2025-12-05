@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MoreVertical, Pencil, Trash2, Package, Image, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Package, Image, X, ChevronLeft, ChevronRight, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { getImageUrl } from "../lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Badge } from "./ui/badge";
@@ -10,7 +10,7 @@ import { EditProductDialog } from "./EditProductDialog";
 import { ViewProductDialog } from "./ViewProductDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
-export function InventoryTable({ products = [], onUpdate, onDelete, categories = [], suppliers = [] }) {
+export function InventoryTable({ products = [], onUpdate, onDelete, categories = [], suppliers = [], sortColumn, sortDirection, onSort, page = 1, perPage = 10, onPageChange, onPerPageChange }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [viewingProduct, setViewingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
@@ -76,6 +76,29 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
     }
   };
 
+  const SortIcon = ({ column }) => {
+    if (!sortColumn || sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1 text-blue-600 dark:text-blue-400" />
+      : <ArrowDown className="w-4 h-4 ml-1 text-blue-600 dark:text-blue-400" />;
+  };
+
+  const handleSort = (column) => {
+    console.log('InventoryTable handleSort called with column:', column);
+    console.log('onSort prop:', onSort);
+    console.log('typeof onSort:', typeof onSort);
+    if (onSort) {
+      console.log('Calling onSort with column:', column);
+      onSort(column);
+    } else {
+      console.error('onSort is not a function!');
+    }
+  };
+
+  console.log('InventoryTable rendered with sortColumn:', sortColumn, 'sortDirection:', sortDirection);
+
   return (
     <>
       <Card>
@@ -91,15 +114,103 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
               <TableHeader>
                 <TableRow>
                   <TableHead>Images</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden xl:table-cell">Brand</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('SKU header clicked!', e);
+                      handleSort('sku');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      SKU
+                      <SortIcon column="sku" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Name header clicked!', e);
+                      handleSort('name');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Name
+                      <SortIcon column="name" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="hidden xl:table-cell cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Brand header clicked!', e);
+                      handleSort('brand');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Brand
+                      <SortIcon column="brand" />
+                    </div>
+                  </TableHead>
                   <TableHead className="hidden lg:table-cell">Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Category header clicked!', e);
+                      handleSort('category');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Category
+                      <SortIcon column="category" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Quantity header clicked!', e);
+                      handleSort('quantity');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Quantity
+                      <SortIcon column="quantity" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Price header clicked!', e);
+                      handleSort('price');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Price
+                      <SortIcon column="price" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Supplier header clicked!', e);
+                      handleSort('supplier');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Supplier
+                      <SortIcon column="supplier" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none"
+                    onClick={(e) => {
+                      console.log('Status header clicked!', e);
+                      handleSort('status');
+                    }}
+                  >
+                    <div className="flex items-center">
+                      Status
+                      <SortIcon column="status" />
+                    </div>
+                  </TableHead>
                   <TableHead>Last Updated</TableHead>
                   <TableHead >Actions</TableHead>
                 </TableRow>
@@ -112,7 +223,9 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                     </TableCell>
                   </TableRow>
                 ) : (
-                  products.map((product) => {
+                  products
+                    .slice((page - 1) * perPage, page * perPage)
+                    .map((product) => {
                     const productImageUrls = imageUrls[product.id] || [];
                     const hasImages = productImageUrls.length > 0;
                     
@@ -197,6 +310,41 @@ export function InventoryTable({ products = [], onUpdate, onDelete, categories =
                 )}
               </TableBody>
             </Table>
+            
+            {/* Pagination controls */}
+            {products.length > 0 && (
+              <div className="flex items-center justify-between mt-4 p-2">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onPageChange && onPageChange(Math.max(1, page - 1))} 
+                    disabled={page <= 1}
+                  >
+                    Prev
+                  </Button>
+                  <div>Page {page} of {Math.max(1, Math.ceil(products.length / perPage))}</div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onPageChange && onPageChange(page + 1)} 
+                    disabled={page >= Math.max(1, Math.ceil(products.length / perPage))}
+                  >
+                    Next
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Per page:</div>
+                  <select 
+                    value={perPage} 
+                    onChange={(e) => onPerPageChange && onPerPageChange(parseInt(e.target.value, 10))} 
+                    className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

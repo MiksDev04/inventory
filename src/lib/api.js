@@ -497,9 +497,12 @@ export async function generateStockNotifications(userId) {
       if (qty === 0 || qty < minQ) {
         const type = qty === 0 ? 'out_of_stock' : 'low_stock';
         
+        console.log('Product check:', p.name, 'qty:', qty, 'type:', type, 'outOfStock setting:', notifSettings.outOfStock, 'lowStock setting:', notifSettings.lowStock);
+        
         // Only create notification if that type is enabled in settings
         if ((type === 'out_of_stock' && !notifSettings.outOfStock) || 
             (type === 'low_stock' && !notifSettings.lowStock)) {
+          console.log('Skipping notification for', p.name, 'because setting is disabled');
           continue; // Skip this notification
         }
         
