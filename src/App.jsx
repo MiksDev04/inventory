@@ -57,20 +57,12 @@ function App() {
       let productWasRestocked = new Set(); // Track which products were restocked
       let isFirstLoad = true;
       let processingQueue = Promise.resolve(); // Sequential processing queue
-      let debounceTimer = null; // Debounce rapid subscription fires
       
       // Set up real-time listeners
       const unsubscribeProducts = fb.subscribeToProducts((products) => {
-        // Clear any existing debounce timer
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        
-        // Debounce rapid fires - wait 500ms before processing
-        debounceTimer = setTimeout(() => {
-          // Queue this update to be processed sequentially
-          processingQueue = processingQueue.then(async () => {
-            setProducts(products);
+        // Queue this update to be processed sequentially
+        processingQueue = processingQueue.then(async () => {
+          setProducts(products);
           
           // On first load (when opening the app), check all products for low/out of stock
           if (isFirstLoad) {
@@ -90,6 +82,7 @@ function App() {
             
             const currentQty = Number(product.quantity || 0);
             const minQty = Number(product.minQuantity || product.min_quantity || 0);
+            const isLowNow = currentQty === 0 || currentQty < minQty;
             
             if (prevProduct) {
               const prevQty = Number(prevProduct.quantity || 0);
@@ -101,13 +94,13 @@ function App() {
                 productWasRestocked.add(product.id);
               }
               
-              // Check if quantity changed and is now low/out of stock
-              const isLowNow = currentQty === 0 || currentQty < minQty;
+              // Only create notification when quantity CHANGED and is now low/out of stock
               const qtyChanged = currentQty !== prevQty;
               
               console.log(`Product: ${product.name}, Qty: ${currentQty}, MinQty: ${minQty}, IsLow: ${isLowNow}, QtyChanged: ${qtyChanged}`);
               
-              if (isLowNow && qtyChanged) {
+              // Create notification ONLY when: quantity changed AND product is low/out of stock
+              if (qtyChanged && isLowNow) {
                 console.log(`Creating notification for ${product.name}`);
                 try {
                   await api.checkProductStockNotification(product.id);
@@ -126,7 +119,6 @@ function App() {
         }).catch(err => {
           console.error('Error processing product updates:', err);
         });
-        }, 500); // Wait 500ms to batch rapid updates
       });
 
       const unsubscribeCategories = fb.subscribeToCategories((categories) => {

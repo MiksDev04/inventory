@@ -326,11 +326,11 @@ export async function checkProductStockNotification(productId, userId) {
         return null;
       }
       
-      // Check if we created a notification for this product+type very recently (within 2 seconds)
+      // Check if we created a notification for this product+type very recently (within 300ms)
       const key = `${productId}-${type}`;
       const lastTime = lastNotificationCreated.get(key);
       const now = Date.now();
-      if (lastTime && now - lastTime < 2000) {
+      if (lastTime && now - lastTime < 300) {
         console.log(`Notification BLOCKED - too soon (${now - lastTime}ms ago)`);
         return null;
       }
