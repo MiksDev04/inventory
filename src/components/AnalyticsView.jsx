@@ -350,7 +350,7 @@ export function AnalyticsView(props) {
       )}
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm">Total Value</CardTitle>
@@ -362,16 +362,7 @@ export function AnalyticsView(props) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Avg Product Value</CardTitle>
-            <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl text-gray-900 dark:text-gray-100">₱{avgProductValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">Per product</p>
-          </CardContent>
-        </Card>
+       
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Mail, Phone, MapPin, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Users, Plus, Mail, Phone, MapPin, Pencil, Trash2, Search, Download, Building2, ShoppingCart, ExternalLink, Tag, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Select, SelectContent, SelectProduct, SelectTrigger, SelectValue } from "./ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { AddSupplierDialog } from "./AddSupplierDialog";
 import { EditSupplierDialog } from "./EditSupplierDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
@@ -16,6 +20,16 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [deletingSupplier, setDeletingSupplier] = useState(null);
+  const [editingWarehouse, setEditingWarehouse] = useState(false);
+  const [warehouseData, setWarehouseData] = useState({
+    name: 'San Pablo Warehouse',
+    email: 'warehouse@sanpablo.ph',
+    phone: '+63 949 123 4567',
+    location: 'San Pablo City, Laguna, Philippines',
+    description: 'Main distribution warehouse for inventory supplies and products.',
+    status: 'active',
+    orderingUrl: 'https://warehouse-management-system-taupe.vercel.app/'
+  });
 
   useEffect(() => {
     setSuppliers(initialSuppliers || []);
@@ -151,7 +165,7 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm text-gray-900 dark:text-gray-100">Total Suppliers</CardTitle>
@@ -174,18 +188,7 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm text-gray-900 dark:text-gray-100">Average Products/Supplier</CardTitle>
-            <Users className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {suppliers.length > 0 ? Math.round(totalProducts / suppliers.length) : 0}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Products per supplier</p>
-          </CardContent>
-        </Card>
+       
       </div>
 
       {/* Search */}
@@ -211,6 +214,77 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
         <Card className="mb-6"><CardContent className="pt-6 text-red-600">{error}</CardContent></Card>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Warehouse Supplier Card */}
+        <Card className="hover:shadow-lg transition-shadow lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4 flex-1">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CardTitle className="text-xl text-gray-900 dark:text-white">{warehouseData.name}</CardTitle>
+                    <Badge variant={warehouseData.status === "active" ? "default" : "secondary"}>
+                      {warehouseData.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    3 products supplied
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              {warehouseData.description}
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <span className="text-gray-600 dark:text-gray-300">{warehouseData.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <span className="text-gray-600 dark:text-gray-300">{warehouseData.phone}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm md:col-span-2">
+                <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <span className="text-gray-600 dark:text-gray-300">{warehouseData.location}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-3 border-t dark:border-gray-800">
+              {warehouseData.orderingUrl && (
+                <Button
+                  onClick={() => window.open(warehouseData.orderingUrl, '_blank')}
+                  className="gap-2 flex-1"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Order from {warehouseData.name}
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setEditingWarehouse(true)}
+              >
+                <Pencil className="w-3 h-3" />
+                Edit
+              </Button>
+            </div>
+            {warehouseData.orderingUrl && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Opens external ordering system in a new window
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {filteredSuppliers.map((supplier) => {
           const stats = getSupplierStats(supplier.name);
           
@@ -360,6 +434,106 @@ export function SuppliersView({ suppliers: initialSuppliers, products, onAddSupp
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {/* Edit Warehouse Dialog */}
+      {editingWarehouse && (
+        <Dialog open={editingWarehouse} onOpenChange={setEditingWarehouse}>
+          <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-y-auto'>
+            <DialogHeader>
+              <DialogTitle className='text-gray-900 dark:text-white'>Edit Warehouse Supplier</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              setEditingWarehouse(false);
+            }}>
+              <div className='grid gap-4 py-4'>
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-name' className='text-gray-700 dark:text-gray-300'>Warehouse Name</Label>
+                  <Input
+                    id='warehouse-name'
+                    value={warehouseData.name}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-email' className='text-gray-700 dark:text-gray-300'>Email</Label>
+                  <Input
+                    id='warehouse-email'
+                    type='email'
+                    value={warehouseData.email}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, email: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-phone' className='text-gray-700 dark:text-gray-300'>Phone Number</Label>
+                  <Input
+                    id='warehouse-phone'
+                    type='tel'
+                    value={warehouseData.phone}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, phone: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-location' className='text-gray-700 dark:text-gray-300'>Location</Label>
+                  <Input
+                    id='warehouse-location'
+                    value={warehouseData.location}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, location: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-description' className='text-gray-700 dark:text-gray-300'>Description</Label>
+                  <Textarea
+                    id='warehouse-description'
+                    value={warehouseData.description}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-url' className='text-gray-700 dark:text-gray-300'>Ordering System URL</Label>
+                  <Input
+                    id='warehouse-url'
+                    type='url'
+                    value={warehouseData.orderingUrl}
+                    onChange={(e) => setWarehouseData({ ...warehouseData, orderingUrl: e.target.value })}
+                    placeholder='https://warehouse-management-system-taupe.vercel.app'
+                  />
+                </div>
+
+                <div className='grid gap-2'>
+                  <Label htmlFor='warehouse-status' className='text-gray-700 dark:text-gray-300'>Status</Label>
+                  <Select value={warehouseData.status} onValueChange={(value) => setWarehouseData({ ...warehouseData, status: value })}>
+                    <SelectTrigger id='warehouse-status'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectProduct value='active'>Active</SelectProduct>
+                      <SelectProduct value='inactive'>Inactive</SelectProduct>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button type='button' variant='outline' onClick={() => setEditingWarehouse(false)}>
+                  Cancel
+                </Button>
+                <Button type='submit'>Update Warehouse</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
